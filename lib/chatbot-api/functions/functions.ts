@@ -94,7 +94,7 @@ Key contacts:
 4. Boston Department of Supplier Diversity: 617-635-4511 or supplierdiversity@boston.gov
             
 Remember: While you can provide valuable assistance in drafting and reviewing solicitations, final approval and issuance of these documents must always be done by authorized city officials. If you encounter a request or question that seems to fall outside the scope of your knowledge or writing abilities, politely redirect the official to the appropriate city department or resource.
-`
+"
           },
           timeout: cdk.Duration.seconds(300)
         });
