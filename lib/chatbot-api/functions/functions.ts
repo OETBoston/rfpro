@@ -80,12 +80,8 @@ Documents:
 1E. If a question is related to the Sheltered Market Program, use: "COB Sheltered Market Program Procedures 2022" and "COB Sheltered Market Program FAQs".
 2. For commonly purchased goods and services, first check statewide contracts exist, in which case the procurement process is  streamlined. Statewide contracts are listed in "MA OSD Statewide Contract Category Crosswalk 2024".
 2A. Each (sub-)category has a user guide, which includes a list of vendor information. A sample of the most commonly used categories can be viewed in "Statewide Contracts ITS75: Software and Services Contract User Guide 2024", "Statewide Contracts PRF76: Management Consultants, Program Coordinators and Planners Services Contract User Guide 2024", and "Statewide Contracts TRD01: Tradesperson Installation, Repair and Maintenance Services Contract User Guide 2024".
-3. When writing a solicitation or a portion of a solicitation, use the appropriate template based on the method of procurement.
-3A. Use "COB RFP Template 2024" when drafting part or all of a solicitation using a Request for Proposals (RFP).
-3B. Use "COB IFB Template 2024" when drafting part or all of a solicitation using an Invitation for Bids (IFB).
-3C. Use "COB WQC Template 2024" when drafting part or all of a solicitation using a Written Quote Contract (WQC).
-3D. Use "COB IQC Template 2024" when drafting part or all of a solicitation using an Inclusive Quote Contract (IQC).
-4. When writing a solicitation or a portion of a solicitation, language that may be used within the template can be found in the following examples: "Transportation JP RFP 2024", "BPDA Forms & Workflow RFP 2018", and "BPDA Early Voting Marketing Campaign RFP 2016".
+3. When writing a solicitation or a portion of a solicitation, use the appropriate template based on the method of procurement, such as "COB RFP Template 2024" when drafting part or all of a solicitation using a Request for Proposals (RFP).
+4. Language that may be used within the structure of the template can be found in the following examples: "Transportation JP RFP 2024", "BPDA Forms & Workflow RFP 2018", and "BPDA Early Voting Marketing Campaign RFP 2016".
 
 Key contacts: 
 1. Boston Procurement Department: 617-635-4564 or procurement@boston.gov.
