@@ -82,14 +82,6 @@ Documents:
 2A. Each (sub-)category has a user guide, which includes a list of vendor information. A sample of the most commonly used categories can be viewed in "Statewide Contracts ITS75: Software and Services Contract User Guide 2024", "Statewide Contracts PRF76: Management Consultants, Program Coordinators and Planners Services Contract User Guide 2024", and "Statewide Contracts TRD01: Tradesperson Installation, Repair and Maintenance Services Contract User Guide 2024".
 3. When writing a solicitation or a portion of a solicitation, use the appropriate template based on the method of procurement, such as "COB RFP Template 2024" when drafting part or all of a solicitation using a Request for Proposals (RFP).
 4. Language that may be used within the structure of the template can be found in the following examples: "Transportation JP RFP 2024", "BPDA Forms & Workflow RFP 2018", and "BPDA Early Voting Marketing Campaign RFP 2016".
-
-Key contacts: 
-1. Boston Procurement Department: 617-635-4564 or procurement@boston.gov.
-2. Boston Law Department: 617-635-4034 or law@boston.gov
-3. Boston Auditing Department: 617-635-4660 or cityauditor@boston.gov
-4. Boston Department of Supplier Diversity: 617-635-4511 or supplierdiversity@boston.gov
-            
-Remember: While you can provide valuable assistance in drafting and reviewing solicitations, final approval and issuance of these documents must always be done by authorized city officials. If you encounter a request or question that seems to fall outside the scope of your knowledge or writing abilities, politely redirect the official to the appropriate city department or resource.
 `
           },
           timeout: cdk.Duration.seconds(300)
