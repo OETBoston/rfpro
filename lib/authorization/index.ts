@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { cognitoDomainName } from '../constants' 
-import { UserPool, UserPoolIdentityProviderOidc,UserPoolClient, UserPoolClientIdentityProvider, ProviderAttribute } from 'aws-cdk-lib/aws-cognito';
+import { UserPool, UserPoolIdentityProviderOidc, UserPoolClient, UserPoolClientIdentityProvider, ProviderAttribute } from 'aws-cdk-lib/aws-cognito';
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
@@ -49,24 +49,29 @@ export class AuthorizationStack extends Construct {
     
     
     // Add the Azure OIDC identity provider to the User Pool
-    // const azureProvider = new UserPoolIdentityProviderOidc(this, 'AzureProvider', {
-    //   clientId: azureClientId,
-    //   clientSecret: azureClientSecret,
-    //   issuerUrl: azureIssuerUrl,
-    //   userPool: userPool,
-    //   attributeMapping: {
-    //     // email: ProviderAttribute.fromString('email'),
-    //     // fullname: ProviderAttribute.fromString('name'),
-    //     // custom: {
-    //     //   customKey: providerAttribute,
-    //     // },
-    //   },
-    //   // ... other optional properties
-    // });
+    const oidcProvider = new cognito.UserPoolIdentityProviderOidc(this, 
+      'bostonOIDCProvider', {
+      name: 'Boston',
+      userPool: userPool,
+      clientId: 'AI-Aided_Test',
+      clientSecret: 'FOZyPWbVY4poV7itrnDc2LiSOR5TnRkyxM149B4thFkkTOGvEZ64jzl8DHWxggLU',
+      issuerUrl: 'https://sso-test.boston.gov',
+      attributeMapping: {
+        custom: {
+          username: ProviderAttribute.other('sub')
+        }
+      },
+      endpoints: {
+        authorization: 'https://sso-test.boston.gov/as/authorization.oauth2',
+        jwksUri: 'https://sso-test.boston.gov/pf/JWKS',
+        token: 'https://sso-test.boston.gov/as/token.oauth2',
+        userInfo: 'https://sso-test.boston.gov/idp/userinfo.openid',
+      }
+    });
 
-    const userPoolClient = new UserPoolClient(this, 'UserPoolClient', {
+    const userPoolClient = new UserPoolClient(this, 'userPoolClient', {
       userPool,      
-      // supportedIdentityProviders: [UserPoolClientIdentityProvider.custom(azureProvider.providerName)],
+      supportedIdentityProviders: [UserPoolClientIdentityProvider.custom(oidcProvider.providerName)],
     });
 
     this.userPoolClient = userPoolClient;
@@ -90,13 +95,6 @@ export class AuthorizationStack extends Construct {
 
     new cdk.CfnOutput(this, "UserPool Client ID", {
       value: userPoolClient.userPoolClientId || "",
-    });
-
-    // new cdk.CfnOutput(this, "UserPool Client Name", {
-    //   value: userPoolClient.userPoolClientName || "",
-    // });
-
-
-    
+    });    
   }
 }
