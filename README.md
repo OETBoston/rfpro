@@ -1,4 +1,6 @@
 # CDK-RAG-APP: Customizable AWS Retreival Augmented Generation Web Application
+
+## Index
 1. **Quickstart**
    - [See the Quickstart Guide](#quickstart)
 
@@ -20,7 +22,7 @@
 
 ---
 
-### Quickstart
+## Quickstart
 
 1. **Prepare Environment**
 
@@ -48,7 +50,7 @@
 
 For detailed instructions and configurations, refer to the [Configuration and Deployment](#configuration-and-deployment) section.
 
-### Overview
+## Overview
 
 AWS Cloud Development Kit (CDK) is a framework that allows you to define cloud infrastructure in code and deploy it using AWS CloudFormation. With CDK, you can deploy complex stacks of AWS services using a single script, ensuring that all resources are configured correctly and consistently.
 
@@ -62,7 +64,7 @@ Our current CDK script deploys a suite of AWS services tailored to support Bosto
 
 The tool excels in retrieving semantically related information from extensive document collections, making it extremely effective for document-heavy applications that require highly specialized chatbot support.
 
-### AWS Services Summary
+## AWS Services Summary
 
 - **Amazon S3**: Scalable storage service for storing and retrieving any amount of data at any time.
 - **API Gateway**: Managed service for creating, publishing, maintaining, monitoring, and securing APIs at any scale. Supports REST and WebSocket APIs.
@@ -70,9 +72,9 @@ The tool excels in retrieving semantically related information from extensive do
 - **Amazon Bedrock**: Provides foundational models and services for building and deploying AI applications.
 - **Amazon Cognito**: User authentication and management service with support for OIDC and SSO integration.
 
-### Configuration and Deployment
+## Configuration and Deployment
 
-#### 1. Setting Up Environment Variables
+### 1. Setting Up Environment Variables
 
 - **File**: `.env.example`
 - **Purpose**: This file contains essential environment variables required for the deployment of the AWS CDK script. It includes identification details, credentials, and secrets necessary for accessing AWS resources and services.
@@ -90,7 +92,7 @@ The tool excels in retrieving semantically related information from extensive do
   3. **Validation**:
      - During the deployment process, a validation script will check the `.env` file to ensure that all required environment variables are correctly set. This step prevents the deployment of faulty or incomplete configurations.
 
-#### 2. Configuring the System Prompt
+### 2. Configuring the System Prompt
 
 - **File**: `system-prompt.txt`
 - **Purpose**: This file contains the system prompt for the RAG (Retrieval-Augmented Generation) chatbot. It defines the instructions for the LLM (Large Language Model), specifying how it should process and respond to user queries.
@@ -106,7 +108,7 @@ The tool excels in retrieving semantically related information from extensive do
      - Prompt engineering is crucial for customizing the behavior of the LLM. Although it may seem straightforward, it involves intricate details to fine-tune the model's responses.
      - For advanced prompt engineering techniques and best practices, refer to [Anthropic's Prompt Engineering Interactive Tutorial](https://github.com/anthropics/courses/tree/master/prompt_engineering_interactive_tutorial). This resource provides valuable insights and tips for improving your prompt configurations.
 
-#### 3. Redeploying the Application
+### 3. Redeploying the Application
 
 - **Command**: `sh redeploy.sh`
 - **Purpose**: This shell script initiates the redeployment sequence of the application. It handles both the bootstrapping and validation processes.
@@ -128,5 +130,3 @@ The tool excels in retrieving semantically related information from extensive do
   5. **Post-Deployment Verification**:
      - After deployment, check the AWS Console to verify the status of the stack. Navigate to the CloudFront section to view the status and details of your deployment.
      - **Accessing the Application**: If the deployment is successful, the CloudFront domain provided will serve as the entry point to your application. Use this domain to access and test the deployed application.
-
-This detailed summary provides a step-by-step guide to configuring and deploying the application using the AWS CDK script. Ensure that each step is completed accurately to avoid deployment issues and ensure a smooth setup.
