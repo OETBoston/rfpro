@@ -41,4 +41,4 @@ export const feedbackTypes = [
   {label: "Other", value:"other", disabled: false}
 ]
 
-export const CHATBOT_NAME = "Bidbot";
+export const CHATBOT_NAME = "BidBot";
