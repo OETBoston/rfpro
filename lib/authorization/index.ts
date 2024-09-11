@@ -1,7 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { cognitoDomainName } from '../constants' 
-import { UserPool, UserPoolIdentityProviderOidc,UserPoolClient, UserPoolClientIdentityProvider, ProviderAttribute } from 'aws-cdk-lib/aws-cognito';
+import { UserPool, UserPoolIdentityProviderOidc, UserPoolClient, UserPoolClientIdentityProvider, ProviderAttribute } from 'aws-cdk-lib/aws-cognito';
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
@@ -13,11 +12,6 @@ export class AuthorizationStack extends Construct {
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id);
-
-    // Replace these values with your Azure client ID, client secret, and issuer URL
-    // const azureClientId = 'your-azure-client-id';
-    // const azureClientSecret = 'your-azure-client-secret';
-    // const azureIssuerUrl = 'https://your-azure-issuer.com';
 
     // Create the Cognito User Pool
     const userPool = new UserPool(this, 'UserPool', {      
@@ -43,30 +37,43 @@ export class AuthorizationStack extends Construct {
     // });
     userPool.addDomain('CognitoDomain', {
       cognitoDomain: {
-        domainPrefix: cognitoDomainName,
+        domainPrefix: process.env.COGNITO_DOMAIN_PREFIX!,
       },
     });
     
     
-    // Add the Azure OIDC identity provider to the User Pool
-    // const azureProvider = new UserPoolIdentityProviderOidc(this, 'AzureProvider', {
-    //   clientId: azureClientId,
-    //   clientSecret: azureClientSecret,
-    //   issuerUrl: azureIssuerUrl,
-    //   userPool: userPool,
-    //   attributeMapping: {
-    //     // email: ProviderAttribute.fromString('email'),
-    //     // fullname: ProviderAttribute.fromString('name'),
-    //     // custom: {
-    //     //   customKey: providerAttribute,
-    //     // },
-    //   },
-    //   // ... other optional properties
-    // });
+    // Add the OIDC identity provider to the User Pool
+    const oidcProvider = new cognito.UserPoolIdentityProviderOidc(this, 
+      'bostonOIDCProvider', {
+        name: process.env.COGNITO_OIDC_PROVIDER_NAME!,
+      userPool: userPool,
+        clientId: process.env.COGNITO_OIDC_PROVIDER_CLIENT_ID!,
+        clientSecret: process.env.COGNITO_OIDC_PROVIDER_CLIENT_SECRET!,
+        issuerUrl: process.env.COGNITO_OIDC_PROVIDER_ISSUER_URL!,
+      attributeMapping: {
+        custom: {
+          username: ProviderAttribute.other('sub')
+        }
+      },
+      endpoints: {
+        authorization: process.env.COGNITO_OIDC_PROVIDER_AUTHORIZATION_ENDPOINT!,
+        jwksUri: process.env.COGNITO_OIDC_PROVIDER_JWKS_URI!,
+        token: process.env.COGNITO_OIDC_PROVIDER_TOKEN_ENDPOINT!,
+        userInfo: process.env.COGNITO_OIDC_PROVIDER_USER_INFO_ENDPOINT!,
+      }
+    });
 
-    const userPoolClient = new UserPoolClient(this, 'UserPoolClient', {
+    const userPoolClient = new UserPoolClient(this, 'userPoolClient', {
       userPool,      
-      // supportedIdentityProviders: [UserPoolClientIdentityProvider.custom(azureProvider.providerName)],
+      supportedIdentityProviders: [UserPoolClientIdentityProvider.custom(oidcProvider.providerName)],
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+          implicitCodeGrant: true
+        },
+        callbackUrls: process.env.COGNITO_USER_POOL_CLIENT_CALLBACK_URL ? [process.env.COGNITO_USER_POOL_CLIENT_CALLBACK_URL] : [],
+        logoutUrls: process.env.COGNITO_USER_POOL_CLIENT_LOGOUT_URL ? [process.env.COGNITO_USER_POOL_CLIENT_LOGOUT_URL] : [],
+      },
     });
 
     this.userPoolClient = userPoolClient;
@@ -90,13 +97,6 @@ export class AuthorizationStack extends Construct {
 
     new cdk.CfnOutput(this, "UserPool Client ID", {
       value: userPoolClient.userPoolClientId || "",
-    });
-
-    // new cdk.CfnOutput(this, "UserPool Client Name", {
-    //   value: userPoolClient.userPoolClientName || "",
-    // });
-
-
-    
+    });    
   }
 }

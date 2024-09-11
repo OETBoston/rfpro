@@ -8,3 +8,5 @@ node_modules
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+.env
+lib/user-interface/.DS_Store

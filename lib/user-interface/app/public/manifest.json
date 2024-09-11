@@ -1,21 +1,41 @@
 {
   "id": "/",
   "start_url": "/",
-  "name": "AWS GenAI Chatbot",
-  "short_name": "GenAI Chatbot",
-  "description": "AWS Multi LLM ChatBot Sample",
+  "name": "RAG AI Chatbot",
+  "short_name": "RAG AI Chatbot",
+  "description": "Retreival Augmented Generation Based AI Chatbot using AWS Generative AI Functionalities",
   "theme_color": "#000000",
   "background_color": "#ffffff",
   "display": "standalone",
   "icons": [
     {
-      "src": "/images/android-chrome-192x192.png",
+      "src": "/images/boston-b-logo-256x256.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/boston-b-logo-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/images/favicon-32x32.png",
+      "src": "/images/boston-b-logo-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/boston-b-logo-64x64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/boston-b-logo-32x32.png",
       "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/boston-b-logo-16x16.png",
+      "sizes": "16x16",
       "type": "image/png"
     }
   ]

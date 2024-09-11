@@ -13,7 +13,6 @@ import { ChatBotApi } from "../chatbot-api";
 import { Website } from "./generate-app"
 import { NagSuppressions } from "cdk-nag";
 import { Utils } from "../shared/utils"
-import { OIDCIntegrationName } from "../constants";
 
 export interface UserInterfaceProps {
   readonly userPoolId: string;
@@ -72,7 +71,7 @@ export class UserInterface extends Construct {
       },
       httpEndpoint : props.api.httpAPI.restAPI.url,
       wsEndpoint : props.api.wsAPI.wsAPIStage.url,
-      federatedSignInProvider : OIDCIntegrationName
+      federatedSignInProvider: process.env.COGNITO_OIDC_PROVIDER_NAME!
     });
 
     const asset = s3deploy.Source.asset(appPath, {
@@ -119,7 +118,6 @@ export class UserInterface extends Construct {
       destinationBucket: websiteBucket,
       distribution: distribution
     });
-
 
     /**
      * CDK NAG suppression
