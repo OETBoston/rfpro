@@ -7,13 +7,12 @@ TARGET_FILE="./lib/chatbot-api/functions/websocket-chat/index.mjs"  # File to mo
 
 START_COMMENT="    // <DO NOT DELETE THIS COMMENT: START OF SYSTEM PROMPT, ANYTHING BETWEEN THESE LINES WILL BE DELETED>"
 END_COMMENT="    // <<DO NOT DELETE THIS COMMENT: END OF SYSTEM PROMPT, ANYTHING BETWEEN THESE LINES WILL BE DELETED>"
-INSERT_COMMENT="const systemPrompt = "
 
 # Read data from the source file and escape quotes
-DATA=$(tr '\n' ' ' < "$SOURCE_FILE" | sed 's/"/\\"/g')
+SYSTEM_PROMPT=$(tr '\n' ' ' < "$SOURCE_FILE" | sed 's/"/\\"/g')
 
 # Prepare the content to be added with newline and tabs
-SYSTEM_PROMPT_DECLARATION="\t\t$INSERT_COMMENT\"$DATA\";"
+SYSTEM_PROMPT_DECLARATION="\t\tsystemPrompt = \"$SYSTEM_PROMPT\";"
 
 # Use awk to process the file
 awk -v start="$START_COMMENT" -v end="$END_COMMENT" -v new_content="$SYSTEM_PROMPT_DECLARATION" '
