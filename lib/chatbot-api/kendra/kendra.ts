@@ -3,7 +3,6 @@ import * as kendra from 'aws-cdk-lib/aws-kendra';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from "constructs";
-import { kendraIndexName } from "../../constants"
 
 export interface KendraIndexStackProps {
   s3Bucket: s3.Bucket
@@ -71,7 +70,7 @@ export class KendraIndexStack extends cdk.Stack {
 
     // Create a new Kendra index
     const index = new kendra.CfnIndex(scope, 'KendraIndex', {
-      name: kendraIndexName,
+      name: process.env.KENDRA_INDEX_NAME!,
       roleArn: kendraIndexRole.roleArn,
       description: 'Gen AI Chatbot Kendra Index',
       edition: 'DEVELOPER_EDITION',

@@ -4,6 +4,7 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as cdk from "aws-cdk-lib";
 import * as path from "path";
 
@@ -21,11 +22,10 @@ import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations
 import { WebSocketLambdaAuthorizer, HttpUserPoolAuthorizer, HttpJwtAuthorizer  } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { aws_apigatewayv2 as apigwv2 } from "aws-cdk-lib";
 import { Construct } from "constructs";
-
-// import { NagSuppressions } from "cdk-nag";
+import { readFile } from 'fs/promises';
 
 export interface ChatBotApiProps {
-  readonly authentication: AuthorizationStack; 
+  readonly authentication: AuthorizationStack;
 }
 
 export class ChatBotApi extends Construct {
@@ -232,6 +232,20 @@ export class ChatBotApi extends Construct {
     new cdk.CfnOutput(this, "HTTP-API - apiEndpoint", {
       value: restBackend.restAPI.apiEndpoint || "",
     });
+
+    const promptDataBucket = new s3.Bucket(this, "PromptDataBucket", {
+      bucketName: "prompt-data-bucket",
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      enforceSSL: true,
+    });
+
+    readFile('./system-prompt.txt', 'utf8').then(systemPrompt => 
+      new s3deploy.BucketDeployment(this, 'SystemPromptDeployment', {
+      sources: [s3deploy.Source.data('system-prompt.txt', systemPrompt)],
+      destinationBucket: promptDataBucket,
+    }))
 
     // this.messagesTopic = realtimeBackend.messagesTopic;
     // this.sessionsTable = chatTables.sessionsTable;

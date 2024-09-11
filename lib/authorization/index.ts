@@ -1,6 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { cognitoDomainName } from '../constants' 
 import { UserPool, UserPoolIdentityProviderOidc, UserPoolClient, UserPoolClientIdentityProvider, ProviderAttribute } from 'aws-cdk-lib/aws-cognito';
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -13,11 +12,6 @@ export class AuthorizationStack extends Construct {
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id);
-
-    // Replace these values with your Azure client ID, client secret, and issuer URL
-    // const azureClientId = 'your-azure-client-id';
-    // const azureClientSecret = 'your-azure-client-secret';
-    // const azureIssuerUrl = 'https://your-azure-issuer.com';
 
     // Create the Cognito User Pool
     const userPool = new UserPool(this, 'UserPool', {      
@@ -43,35 +37,43 @@ export class AuthorizationStack extends Construct {
     // });
     userPool.addDomain('CognitoDomain', {
       cognitoDomain: {
-        domainPrefix: cognitoDomainName,
+        domainPrefix: process.env.COGNITO_DOMAIN_PREFIX!,
       },
     });
     
     
-    // Add the Azure OIDC identity provider to the User Pool
+    // Add the OIDC identity provider to the User Pool
     const oidcProvider = new cognito.UserPoolIdentityProviderOidc(this, 
       'bostonOIDCProvider', {
-      name: 'Boston',
+        name: process.env.COGNITO_OIDC_PROVIDER_NAME!,
       userPool: userPool,
-      clientId: 'AI-Aided_Test',
-      clientSecret: 'FOZyPWbVY4poV7itrnDc2LiSOR5TnRkyxM149B4thFkkTOGvEZ64jzl8DHWxggLU',
-      issuerUrl: 'https://sso-test.boston.gov',
+        clientId: process.env.COGNITO_OIDC_PROVIDER_CLIENT_ID!,
+        clientSecret: process.env.COGNITO_OIDC_PROVIDER_CLIENT_SECRET!,
+        issuerUrl: process.env.COGNITO_OIDC_PROVIDER_ISSUER_URL!,
       attributeMapping: {
         custom: {
           username: ProviderAttribute.other('sub')
         }
       },
       endpoints: {
-        authorization: 'https://sso-test.boston.gov/as/authorization.oauth2',
-        jwksUri: 'https://sso-test.boston.gov/pf/JWKS',
-        token: 'https://sso-test.boston.gov/as/token.oauth2',
-        userInfo: 'https://sso-test.boston.gov/idp/userinfo.openid',
+        authorization: process.env.COGNITO_OIDC_PROVIDER_AUTHORIZATION_ENDPOINT!,
+        jwksUri: process.env.COGNITO_OIDC_PROVIDER_JWKS_URI!,
+        token: process.env.COGNITO_OIDC_PROVIDER_TOKEN_ENDPOINT!,
+        userInfo: process.env.COGNITO_OIDC_PROVIDER_USER_INFO_ENDPOINT!,
       }
     });
 
     const userPoolClient = new UserPoolClient(this, 'userPoolClient', {
       userPool,      
       supportedIdentityProviders: [UserPoolClientIdentityProvider.custom(oidcProvider.providerName)],
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+          implicitCodeGrant: true
+        },
+        callbackUrls: process.env.COGNITO_USER_POOL_CLIENT_CALLBACK_URL ? [process.env.COGNITO_USER_POOL_CLIENT_CALLBACK_URL] : [],
+        logoutUrls: process.env.COGNITO_USER_POOL_CLIENT_LOGOUT_URL ? [process.env.COGNITO_USER_POOL_CLIENT_LOGOUT_URL] : [],
+      },
     });
 
     this.userPoolClient = userPoolClient;

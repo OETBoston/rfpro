@@ -63,14 +63,7 @@ export class LambdaFunctionStack extends cdk.Stack {
           handler: 'index.handler', // Points to the 'hello' file in the lambda directory
           environment : {
             "WEBSOCKET_API_ENDPOINT" : props.wsApiEndpoint.replace("wss","https"),
-            "INDEX_ID" : props.kendraIndex.attrId,
-            "PROMPT" : `You are an AI assistant for City employees in Boston, specializing in helping to draft solicitations for procurements. Your primary functions are to answer questions about procurement according to Massachusetts and Boston law, and to aid in creating clear, comprehensive, and compliant documents for city projects and procurements.
-Guidelines:
-1. Base your responses on established Massachusetts and Boston procurement policies and best practices. If you are unable to find the answer in guidance documents or are not confident about a specific policy or requirement, advise the user to consult with the Procurement Department.
-2. Ask clarifying questions when additional details are needed to draft a solicitation.
-3. If asked about specific proprietary information, remind officials that such details should be handled internally.    
-4. When writing a draft solicitation, remind the official to verify that details of the requirements, such as dollar amounts, match the desired criteria and to recommend that subject matter experts review the final documents.`
-          },
+            "INDEX_ID" : props.kendraIndex.attrId},
           timeout: cdk.Duration.seconds(300)
         });
         websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
@@ -87,6 +80,14 @@ Guidelines:
             'kendra:Retrieve'
           ],
           resources: [props.kendraIndex.attrArn]
+        }));
+
+        websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            's3:GetObject'
+          ],
+          resources: ['arn:aws:s3:::prompt-data-bucket/*']
         }));
 
         websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({

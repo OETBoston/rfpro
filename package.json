@@ -1,8 +1,8 @@
 {
-  "name": "gen-ai-mvp",
+  "name": "cdk-rag-app",
   "version": "0.1.0",
   "bin": {
-    "gen-ai-mvp": "bin/gen-ai-mvp.js"
+    "cdk-rag-app": "bin/cdk-rag-app.js"
   },
   "scripts": {
     "build": "tsc",
@@ -23,6 +23,7 @@
     "aws-cdk-lib": "2.140.0",
     "cdk-nag": "^2.28.114",
     "constructs": "^10.0.0",
+    "dotenv": "^16.4.5",
     "source-map-support": "^0.5.21"
   }
 }

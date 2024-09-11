@@ -1,36 +1,3 @@
-# AWS Credentials
-## AWS CDK
-CDK_DEFAULT_ACCOUNT=
-CDK_DEFAULT_REGION=us-east-1
-
-## AWS CLI:
-AWS_PROFILE=procurement-test
-
-# App Authorization Details
-## Option to set the entire authentication process off
-HAS_AUTHENTICATION=true
-## Cognito OIDC IDP Configuration, SSO Details
-COGNITO_OIDC_PROVIDER_NAME=Boston
-COGNITO_OIDC_PROVIDER_CLIENT_ID=AI-Aided_Test
-COGNITO_OIDC_PROVIDER_CLIENT_SECRET=
-COGNITO_OIDC_PROVIDER_ISSUER_URL=https://sso-test.boston.gov
-COGNITO_OIDC_PROVIDER_AUTHORIZATION_ENDPOINT=https://sso-test.boston.gov/as/authorization.oauth2
-COGNITO_OIDC_PROVIDER_JWKS_URI=https://sso-test.boston.gov/pf/JWKS
-COGNITO_OIDC_PROVIDER_TOKEN_ENDPOINT=https://sso-test.boston.gov/as/token.oauth2
-COGNITO_OIDC_PROVIDER_USER_INFO_ENDPOINT=https://sso-test.boston.gov/idp/userinfo.openid
-
-## Cognito User Pool App Client Configuration, SSO Details
-COGNITO_USER_POOL_CLIENT_CALLBACK_URL=
-COGNITO_USER_POOL_CLIENT_LOGOUT_URL=
-
-# App Identification Details
-## STACK NAME MUST MATCH TARGET, STACKS CAN BE WIPED & REBUILT
-CDK_STACK_NAME=
-## ALL NAMES MUST BE UNIQUE, otherwise will conflict with other instances
-KENDRA_INDEX_NAME=
-COGNITO_DOMAIN_PREFIX=
-S3_SYSTEM_PROMPT="Here’s the updated text with double quotations replaced by single quotations:
-
 You are an AI assistant for City employees in Boston, specializing in helping to draft solicitations for procurements. Your primary functions are to answer questions about procurement according to Massachusetts and Boston law, and to aid in creating clear, comprehensive, and compliant documents for city projects and procurements.
 Guidelines:
 1. Base your responses on established Massachusetts and Boston procurement policies and best practices. If you are unable to find the answer in guidance documents or are not confident about a specific policy or requirement, advise the user to consult with the Procurement Department.
@@ -56,4 +23,3 @@ Key contacts:
 2. Boston Department of Supplier Diversity: 617-635-4511 or supplierdiversity@boston.gov
 
 Remember: While you can provide valuable assistance in drafting and reviewing solicitations, final approval and issuance of these documents must always be done by authorized city officials. If you encounter a request or question that seems to fall outside the scope of your knowledge or writing abilities, politely redirect the official to the appropriate city department or resource.
-"

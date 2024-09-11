@@ -9,3 +9,4 @@ node_modules
 .cdk.staging
 cdk.out
 .env
+lib/user-interface/.DS_Store
