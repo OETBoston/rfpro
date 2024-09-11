@@ -1,4 +1,5 @@
-echo $"\n[INFO] Starting Redeployment Process...\n"
+set -e
+echo $"\n[INFO] Starting Redeployment Process..."
 source .env
 printf '%.0s-' {1..100}
 sh validate.sh

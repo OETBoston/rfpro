@@ -20,7 +20,6 @@
    - [Configuring the System Prompt](#2-configuring-the-system-prompt)
    - [Redeploying the Application](#3-redeploying-the-application)
 
----
 
 ## Quickstart
 
@@ -115,10 +114,10 @@ The tool excels in retrieving semantically related information from extensive do
 
 - **Steps to Redeploy**:
   1. **Execute the Script**:
-     - Run the command `sh redeploy.sh` in your terminal. This script orchestrates the deployment process, including running the bootstrapping and validation scripts.
+     - Run the command `sh redeploy.sh` in your terminal. This script orchestrates the deployment process, and automatically runs the bootstrapping and validation scripts.
 
   2. **Bootstrapping**:
-     - The bootstrapping script initializes the application using the configurations specified in `system-prompt.txt`. This step sets up the application environment and prepares it for deployment.
+     - The bootstrapping script initializes the application using the configurations specified in `system-prompt.txt`. This step sets up the application environment and prepares it for deployment. No action needed at this step.
 
   3. **Validation**:
      - The validation script checks the configurations in the `.env` file and `system-prompt.txt` to ensure everything is set correctly before proceeding with the actual deployment.
