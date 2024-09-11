@@ -7,7 +7,7 @@ import {
   SpaceBetween,
   StatusIndicator
 } from "@cloudscape-design/components";
-import LogoIcon from "../../public/images/boston-b-logo.jsx";
+import PointerIcon from "../../public/images/pointer-icon.jsx";
 import useOnFollow from "../common/hooks/use-on-follow";
 import { useNavigationPanelState } from "../common/hooks/use-navigation-panel-state";
 import { AppContext } from "../common/app-context";
@@ -144,7 +144,7 @@ export default function NavigationPanel() {
       <Box margin="xs" padding={{ top: "l" }} textAlign="center">
         <RouterButton
           iconAlign="right"
-          iconSvg={<LogoIcon />}
+          iconSvg={<PointerIcon />}
           variant="primary"
           href={`/chatbot/playground/${uuidv4()}`}
           data-alignment="right"
