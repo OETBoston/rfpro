@@ -56,8 +56,9 @@ export class ChatBotApi extends Construct {
         kendraSource: kendra.kendraSource,
         feedbackTable: tables.feedbackTable,
         feedbackBucket: buckets.feedbackBucket,
-        knowledgeBucket: buckets.kendraBucket
-      })
+        knowledgeBucket: buckets.kendraBucket,
+      }
+    )
 
     const wsAuthorizer = new WebSocketLambdaAuthorizer('WebSocketAuthorizer', props.authentication.lambdaAuthorizer, {identitySource: ['route.request.querystring.Authorization']});
 
@@ -234,7 +235,7 @@ export class ChatBotApi extends Construct {
     });
 
     const promptDataBucket = new s3.Bucket(this, "PromptDataBucket", {
-      bucketName: "prompt-data-bucket",
+      bucketName: process.env.CDK_STACK_NAME!.toLowerCase() + "-prompt-data-bucket",
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,

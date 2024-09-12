@@ -4,6 +4,7 @@ import { UserPool, UserPoolIdentityProviderOidc, UserPoolClient, UserPoolClientI
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
+import { CognitoUserPoolsAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 
 export class AuthorizationStack extends Construct {
   public readonly lambdaAuthorizer : lambda.Function;
@@ -65,7 +66,10 @@ export class AuthorizationStack extends Construct {
 
     const userPoolClient = new UserPoolClient(this, 'userPoolClient', {
       userPool,      
-      supportedIdentityProviders: [UserPoolClientIdentityProvider.custom(oidcProvider.providerName)],
+      supportedIdentityProviders: [
+        cognito.UserPoolClientIdentityProvider.COGNITO,
+        //UserPoolClientIdentityProvider.custom(oidcProvider.providerName)
+      ],
       oAuth: {
         flows: {
           authorizationCodeGrant: true,

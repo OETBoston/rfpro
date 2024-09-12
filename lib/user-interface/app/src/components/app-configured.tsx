@@ -32,6 +32,7 @@ export default function AppConfigured() {
           setAuthenticated(true);
         }
         setConfig(awsExports);
+        setAuthenticated(true);
         setConfigured(true);
       } catch (e) {
         // If you get to this state, then this means the user check failed
@@ -45,6 +46,7 @@ export default function AppConfigured() {
             Auth.federatedSignIn();
           }
         } catch (error) {
+          throw currentConfig;
           // however, just in case, we'll add another try catch
           setError(true);
         }
