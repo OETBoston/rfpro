@@ -63,7 +63,8 @@ export class LambdaFunctionStack extends cdk.Stack {
           handler: 'index.handler', // Points to the 'hello' file in the lambda directory
           environment : {
             "WEBSOCKET_API_ENDPOINT" : props.wsApiEndpoint.replace("wss","https"),
-            "INDEX_ID" : props.kendraIndex.attrId},
+            "INDEX_ID" : props.kendraIndex.attrId,
+            "PROMPT_DATA_BUCKET_NAME": process.env.CDK_STACK_NAME!.toLowerCase() + "-prompt-data-bucket"},
           timeout: cdk.Duration.seconds(300)
         });
         websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
@@ -87,7 +88,7 @@ export class LambdaFunctionStack extends cdk.Stack {
           actions: [
             's3:GetObject'
           ],
-          resources: ['arn:aws:s3:::prompt-data-bucket/*']
+          resources: ['arn:aws:s3:::' + process.env.CDK_STACK_NAME!.toLowerCase() + "-prompt-data-bucket" + '/*']
         }));
 
         websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
