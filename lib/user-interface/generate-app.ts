@@ -7,10 +7,7 @@ import { ChatBotApi } from "../chatbot-api";
 import { NagSuppressions } from "cdk-nag";
 
 
-export interface WebsiteProps {  
-  readonly userPoolId: string;
-  readonly userPoolClientId: string;
-  readonly api: ChatBotApi;
+export interface WebsiteProps {
   readonly websiteBucket: s3.Bucket;
 }
 
