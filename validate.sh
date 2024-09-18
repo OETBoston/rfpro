@@ -46,13 +46,24 @@ check_var() {
     local var_name=$1
     local var_value=$2
     local is_optional=$3
+    local is_critical=$4
 
     # Use indirect reference to modify the arrays
     if [ -z "$var_value" ]; then
         if [ "$is_optional" == "true" ]; then
-            warning_list+=('OPTIONAL environment variable $var_name is not set or empty.')
+            warning_list+=("OPTIONAL environment variable $var_name is not set or empty.")
+            if  [ "$is_critical" == "true" ]; then
+                echo "\n[WARNING] CRITICAL environment variable $var_name is not set or empty"
+                echo '\n[INFO] This variable should only be missing if the cloudfront domain is unknown before initialization.'
+                read -rep $'\n'"[ACTION] Is this an INITIAL deployment? (y/n): " confirmation
+                # Checks validation
+                if [ "$confirmation" != "y" ] && [ "$confirmation" != "" ]; then
+                    echo "\n[ACTION] Please set $var_name with cloudfront hosted domain name."
+                    exit 1
+                fi
+            fi
         else
-            error_list+=('Environment variable $var_name is not set or empty.')
+            error_list+=("Environment variable $var_name is not set or empty.")
             error_list+=("[INFO] You must declare the value of these variables in the .env file at the project root to proceed. Reference .env.example for details.")
         fi
     fi
@@ -74,22 +85,21 @@ check_system_prompt_text_file
 
 # Check environment variables
 echo "\n[INFO] Validating Remaining Environment Variables..."
-check_var "CDK_DEFAULT_ACCOUNT" "$CDK_DEFAULT_ACCOUNT" "false" "error_list" "warning_list"
-check_var "CDK_DEFAULT_REGION" "$CDK_DEFAULT_REGION" "false" "error_list" "warning_list"
-check_var "COGNITO_OIDC_PROVIDER_NAME" "$COGNITO_OIDC_PROVIDER_NAME" "false" "error_list" "warning_list"
-check_var "COGNITO_OIDC_PROVIDER_CLIENT_ID" "$COGNITO_OIDC_PROVIDER_CLIENT_ID" "false" "error_list" "warning_list"
-check_var "COGNITO_OIDC_PROVIDER_CLIENT_SECRET" "$COGNITO_OIDC_PROVIDER_CLIENT_SECRET" "false" "error_list" "warning_list"
-check_var "COGNITO_OIDC_PROVIDER_ISSUER_URL" "$COGNITO_OIDC_PROVIDER_ISSUER_URL" "false" "error_list" "warning_list"
-check_var "COGNITO_OIDC_PROVIDER_AUTHORIZATION_ENDPOINT" "$COGNITO_OIDC_PROVIDER_AUTHORIZATION_ENDPOINT" "false" "error_list" "warning_list"
-check_var "COGNITO_OIDC_PROVIDER_JWKS_URI" "$COGNITO_OIDC_PROVIDER_JWKS_URI" "false" "error_list" "warning_list"
-check_var "COGNITO_OIDC_PROVIDER_TOKEN_ENDPOINT" "$COGNITO_OIDC_PROVIDER_TOKEN_ENDPOINT" "false" "error_list" "warning_list"
-check_var "COGNITO_OIDC_PROVIDER_USER_INFO_ENDPOINT" "$COGNITO_OIDC_PROVIDER_USER_INFO_ENDPOINT" "false" "error_list" "warning_list"
-check_var "COGNITO_USER_POOL_CLIENT_CALLBACK_URL" "$COGNITO_USER_POOL_CLIENT_CALLBACK_URL" "false" "error_list" "warning_list"
-check_var "CDK_STACK_NAME" "$CDK_STACK_NAME" "false" "error_list" "warning_list"
-check_var "KENDRA_INDEX_NAME" "$KENDRA_INDEX_NAME" "false" "error_list" "warning_list"
-check_var "COGNITO_DOMAIN_PREFIX" "$COGNITO_DOMAIN_PREFIX" "false" "error_list" "warning_list"
+check_var "CDK_DEFAULT_ACCOUNT" "$CDK_DEFAULT_ACCOUNT" "false" "false"
+check_var "CDK_DEFAULT_REGION" "$CDK_DEFAULT_REGION" "false" "false"
+check_var "COGNITO_OIDC_PROVIDER_NAME" "$COGNITO_OIDC_PROVIDER_NAME" "false" "false"
+check_var "COGNITO_OIDC_PROVIDER_CLIENT_ID" "$COGNITO_OIDC_PROVIDER_CLIENT_ID" "false" "false"
+check_var "COGNITO_OIDC_PROVIDER_CLIENT_SECRET" "$COGNITO_OIDC_PROVIDER_CLIENT_SECRET" "false" "false"
+check_var "COGNITO_OIDC_PROVIDER_ISSUER_URL" "$COGNITO_OIDC_PROVIDER_ISSUER_URL" "false" "false"
+check_var "COGNITO_OIDC_PROVIDER_AUTHORIZATION_ENDPOINT" "$COGNITO_OIDC_PROVIDER_AUTHORIZATION_ENDPOINT" "false" "false"
+check_var "COGNITO_OIDC_PROVIDER_JWKS_URI" "$COGNITO_OIDC_PROVIDER_JWKS_URI" "false" "false"
+check_var "COGNITO_OIDC_PROVIDER_TOKEN_ENDPOINT" "$COGNITO_OIDC_PROVIDER_TOKEN_ENDPOINT" "false" "false"
+check_var "COGNITO_OIDC_PROVIDER_USER_INFO_ENDPOINT" "$COGNITO_OIDC_PROVIDER_USER_INFO_ENDPOINT" "false" "false"
+check_var "CDK_STACK_NAME" "$CDK_STACK_NAME" "false" "false"
+check_var "KENDRA_INDEX_NAME" "$KENDRA_INDEX_NAME" "false" "false"
+check_var "COGNITO_DOMAIN_PREFIX" "$COGNITO_DOMAIN_PREFIX" "false" "false"
 # Optional variable
-check_var "COGNITO_USER_POOL_CLIENT_LOGOUT_URL" "$COGNITO_USER_POOL_CLIENT_LOGOUT_URL" "true" "error_list" "warning_list"
+check_var "COGNITO_USER_POOL_CLIENT_LOGOUT_URL" "$COGNITO_USER_POOL_CLIENT_LOGOUT_URL" "true" "false"
 
 # Output errors and warnings
 if [ ${#error_list[@]} -gt 0 ]; then

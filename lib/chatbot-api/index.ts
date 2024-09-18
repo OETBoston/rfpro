@@ -1,14 +1,6 @@
-import * as cognito from "aws-cdk-lib/aws-cognito";
-import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import * as sns from "aws-cdk-lib/aws-sns";
-import * as ssm from "aws-cdk-lib/aws-ssm";
-import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as cdk from "aws-cdk-lib";
-import * as path from "path";
-
-import { AuthorizationStack } from '../authorization'
 
 import { WebsocketBackendAPI } from "./gateway/websocket-api"
 import { RestBackendAPI } from "./gateway/rest-api"
@@ -19,23 +11,22 @@ import { S3BucketStack } from "./buckets/buckets"
 
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { WebSocketLambdaAuthorizer, HttpUserPoolAuthorizer, HttpJwtAuthorizer  } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { WebSocketLambdaAuthorizer, HttpJwtAuthorizer  } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { aws_apigatewayv2 as apigwv2 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { readFile } from 'fs/promises';
+import { CloudFrontWebDistribution, Distribution } from "aws-cdk-lib/aws-cloudfront";
 
 export interface ChatBotApiProps {
-  readonly authentication: AuthorizationStack;
+  readonly cloudfrontDistribution: CloudFrontWebDistribution;
+  readonly httpAuthorizer: HttpJwtAuthorizer;
+  readonly wsAuthorizer: WebSocketLambdaAuthorizer;
+  readonly websiteBucket: s3.Bucket;
+  readonly userPoolID: string;
+  readonly userPoolClientID: string;
 }
 
 export class ChatBotApi extends Construct {
-  public readonly httpAPI: RestBackendAPI;
-  public readonly wsAPI: WebsocketBackendAPI;
-  // public readonly byUserIdIndex: string;
-  // public readonly filesBucket: s3.Bucket;
-  // public readonly userFeedbackBucket: s3.Bucket;
-  // public readonly wsAPI: apigwv2.WebSocketApi;
-
   constructor(scope: Construct, id: string, props: ChatBotApiProps) {
     super(scope, id);
 
@@ -44,9 +35,7 @@ export class ChatBotApi extends Construct {
     const kendra = new KendraIndexStack(this, "KendraStack", { s3Bucket: buckets.kendraBucket });
 
     const restBackend = new RestBackendAPI(this, "RestBackend", {})
-    this.httpAPI = restBackend;
     const websocketBackend = new WebsocketBackendAPI(this, "WebsocketBackend", {})
-    this.wsAPI = websocketBackend;
 
     const lambdaFunctions = new LambdaFunctionStack(this, "LambdaFunctions",
       {
@@ -60,42 +49,31 @@ export class ChatBotApi extends Construct {
       }
     )
 
-    const wsAuthorizer = new WebSocketLambdaAuthorizer('WebSocketAuthorizer', props.authentication.lambdaAuthorizer, {identitySource: ['route.request.querystring.Authorization']});
-
     websocketBackend.wsAPI.addRoute('getChatbotResponse', {
       integration: new WebSocketLambdaIntegration('chatbotResponseIntegration', lambdaFunctions.chatFunction),
-      // authorizer: wsAuthorizer
     });
     websocketBackend.wsAPI.addRoute('$connect', {
       integration: new WebSocketLambdaIntegration('chatbotConnectionIntegration', lambdaFunctions.chatFunction),
-      authorizer: wsAuthorizer
+      authorizer: props.wsAuthorizer
     });
     websocketBackend.wsAPI.addRoute('$default', {
       integration: new WebSocketLambdaIntegration('chatbotConnectionIntegration', lambdaFunctions.chatFunction),
-      // authorizer: wsAuthorizer
     });
     websocketBackend.wsAPI.addRoute('$disconnect', {
       integration: new WebSocketLambdaIntegration('chatbotDisconnectionIntegration', lambdaFunctions.chatFunction),
-      // authorizer: wsAuthorizer
     });
     websocketBackend.wsAPI.addRoute('generateEmail', {
       integration: new WebSocketLambdaIntegration('emailIntegration', lambdaFunctions.chatFunction),
-      // authorizer: wsAuthorizer
     });
 
     websocketBackend.wsAPI.grantManageConnections(lambdaFunctions.chatFunction);
-
-    
-    const httpAuthorizer = new HttpJwtAuthorizer('HTTPAuthorizer', props.authentication.userPool.userPoolProviderUrl,{
-      jwtAudience: [props.authentication.userPoolClient.userPoolClientId],
-    })
 
     const sessionAPIIntegration = new HttpLambdaIntegration('SessionAPIIntegration', lambdaFunctions.sessionFunction);
     restBackend.restAPI.addRoutes({
       path: "/user-session",
       methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST, apigwv2.HttpMethod.DELETE],
       integration: sessionAPIIntegration,
-      authorizer: httpAuthorizer,
+      authorizer: props.httpAuthorizer,
     })
 
     // SESSION_HANDLER
@@ -110,7 +88,7 @@ export class ChatBotApi extends Construct {
       path: "/user-feedback",
       methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST, apigwv2.HttpMethod.DELETE],
       integration: feedbackAPIIntegration,
-      authorizer: httpAuthorizer,
+      authorizer: props.httpAuthorizer,
     })
 
     const feedbackAPIDownloadIntegration = new HttpLambdaIntegration('FeedbackDownloadAPIIntegration', lambdaFunctions.feedbackFunction);
@@ -118,7 +96,7 @@ export class ChatBotApi extends Construct {
       path: "/user-feedback/download-feedback",
       methods: [apigwv2.HttpMethod.POST],
       integration: feedbackAPIDownloadIntegration,
-      authorizer: httpAuthorizer,
+      authorizer: props.httpAuthorizer,
     })
 
     const s3GetAPIIntegration = new HttpLambdaIntegration('S3GetAPIIntegration', lambdaFunctions.getS3Function);
@@ -126,7 +104,7 @@ export class ChatBotApi extends Construct {
       path: "/s3-bucket-data",
       methods: [apigwv2.HttpMethod.POST],
       integration: s3GetAPIIntegration,
-      authorizer: httpAuthorizer,
+      authorizer: props.httpAuthorizer,
     })
 
     const s3DeleteAPIIntegration = new HttpLambdaIntegration('S3DeleteAPIIntegration', lambdaFunctions.deleteS3Function);
@@ -134,7 +112,7 @@ export class ChatBotApi extends Construct {
       path: "/delete-s3-file",
       methods: [apigwv2.HttpMethod.POST],
       integration: s3DeleteAPIIntegration,
-      authorizer: httpAuthorizer,
+      authorizer: props.httpAuthorizer,
     })
 
     const s3UploadAPIIntegration = new HttpLambdaIntegration('S3UploadAPIIntegration', lambdaFunctions.uploadS3Function);
@@ -142,7 +120,7 @@ export class ChatBotApi extends Construct {
       path: "/signed-url",
       methods: [apigwv2.HttpMethod.POST],
       integration: s3UploadAPIIntegration,
-      authorizer: httpAuthorizer,
+      authorizer: props.httpAuthorizer,
     })
 
     const kendraSyncProgressAPIIntegration = new HttpLambdaIntegration('KendraSyncAPIIntegration', lambdaFunctions.syncKendraFunction);
@@ -150,7 +128,7 @@ export class ChatBotApi extends Construct {
       path: "/kendra-sync/still-syncing",
       methods: [apigwv2.HttpMethod.GET],
       integration: kendraSyncProgressAPIIntegration,
-      authorizer: httpAuthorizer,
+      authorizer: props.httpAuthorizer,
     })
 
     const kendraSyncAPIIntegration = new HttpLambdaIntegration('KendraSyncAPIIntegration', lambdaFunctions.syncKendraFunction);
@@ -158,7 +136,7 @@ export class ChatBotApi extends Construct {
       path: "/kendra-sync/sync-kendra",
       methods: [apigwv2.HttpMethod.GET],
       integration: kendraSyncAPIIntegration,
-      authorizer: httpAuthorizer,
+      authorizer: props.httpAuthorizer,
     })
     
     const kendraLastSyncAPIIntegration = new HttpLambdaIntegration('KendraLastSyncAPIIntegration', lambdaFunctions.syncKendraFunction);
@@ -166,67 +144,9 @@ export class ChatBotApi extends Construct {
       path: "/kendra-sync/get-last-sync",
       methods: [apigwv2.HttpMethod.GET],
       integration: kendraLastSyncAPIIntegration,
-      authorizer: httpAuthorizer,
+      authorizer: props.httpAuthorizer,
     })
 
-      // this.wsAPI = websocketBackend.wsAPI;
-
-
-
-
-    // const api = new appsync.GraphqlApi(this, "ChatbotApi", {
-    //   name: "ChatbotGraphqlApi",
-    //   definition: appsync.Definition.fromFile(
-    //     path.join(__dirname, "schema/schema.graphql")
-    //   ),
-    //   authorizationConfig: {
-    //     additionalAuthorizationModes: [
-    //       {
-    //         authorizationType: appsync.AuthorizationType.IAM,
-    //       },
-    //       {
-    //         authorizationType: appsync.AuthorizationType.USER_POOL,
-    //         userPoolConfig: {
-    //           userPool: props.userPool,
-    //         },
-    //       },
-    //     ],
-    //   },
-    //   logConfig: {
-    //     fieldLogLevel: appsync.FieldLogLevel.ALL,
-    //     retention: RetentionDays.ONE_WEEK,
-    //     role: loggingRole,
-    //   },
-    //   xrayEnabled: true,
-    //   visibility: props.config.privateWebsite ? appsync.Visibility.PRIVATE : appsync.Visibility.GLOBAL
-    // });
-
-    // new ApiResolvers(this, "RestApi", {
-    //   ...props,
-    //   sessionsTable: chatTables.sessionsTable,
-    //   byUserIdIndex: chatTables.byUserIdIndex,
-    //   api,
-    //   userFeedbackBucket: chatBuckets.userFeedbackBucket,
-    // });
-
-    // const realtimeBackend = new RealtimeGraphqlApiBackend(this, "Realtime", {
-    //   ...props,
-    //   api,
-    // });
-
-    // realtimeBackend.resolvers.outgoingMessageHandler.addEnvironment(
-    //   "GRAPHQL_ENDPOINT",
-    //   api.graphqlUrl
-    // );
-
-    // api.grantMutation(realtimeBackend.resolvers.outgoingMessageHandler);
-
-    // // Prints out URL
-    // new cdk.CfnOutput(this, "GraphqlAPIURL", {
-    //   value: api.graphqlUrl,
-    // });
-
-    // // Prints out the AppSync GraphQL API key to the terminal
     new cdk.CfnOutput(this, "WS-API - apiEndpoint", {
       value: websocketBackend.wsAPI.apiEndpoint || "",
     });
@@ -248,22 +168,31 @@ export class ChatBotApi extends Construct {
       destinationBucket: promptDataBucket,
     }))
 
-    // this.messagesTopic = realtimeBackend.messagesTopic;
-    // this.sessionsTable = chatTables.sessionsTable;
-    // this.byUserIdIndex = chatTables.byUserIdIndex;
-    // this.userFeedbackBucket = chatBuckets.userFeedbackBucket;
-    // this.filesBucket = chatBuckets.filesBucket;
-    // this.graphqlApi = api;
+    const exportsAsset = s3deploy.Source.jsonData("aws-exports.json", {
+      Auth: {
+        region: cdk.Aws.REGION,
+        userPoolId: props.userPoolID,
+        userPoolWebClientId: props.userPoolClientID,
+        oauth: {
+          domain: process.env.COGNITO_DOMAIN_PREFIX!.concat(".auth.", cdk.Aws.REGION ,".amazoncognito.com"),
+          scope: ["aws.cognito.signin.user.admin", "email", "openid", "profile"],
+          redirectSignIn: "https://" + props.cloudfrontDistribution.distributionDomainName,
+          redirectSignOut: process.env.COGNITO_USER_POOL_CLIENT_LOGOUT_URL!,
+          responseType: "code"
+        }
+      },
+      httpEndpoint: restBackend.restAPI.url,
+      wsEndpoint: websocketBackend.wsAPIStage.url,
+      federatedSignInProvider: process.env.COGNITO_OIDC_PROVIDER_NAME!
+    });
 
-    /**
-     * CDK NAG suppression
-     */
-    // NagSuppressions.addResourceSuppressions(loggingRole, [
-    //   {
-    //     id: "AwsSolutions-IAM5",
-    //     reason:
-    //       "Access to all log groups required for CloudWatch log group creation.",
-    //   },
-    // ]);
+    // Deploy the new file to the existing bucket
+    new s3deploy.BucketDeployment(this, 'DeployAwsExports', {
+      prune: false,
+      retainOnDelete: false,
+      sources: [exportsAsset],
+      destinationBucket: props.websiteBucket,
+      distribution: props.cloudfrontDistribution
+    });
   }
 }

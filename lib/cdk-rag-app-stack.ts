@@ -8,14 +8,20 @@ import { ChatBotApi } from "./chatbot-api";
 export class RagAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-    const authentication = new AuthorizationStack(this, "Authorization")
-    const chatbotAPI = new ChatBotApi(this, "ChatbotAPI", {authentication});
-    const userInterface = new UserInterface(this, "UserInterface",
-     {userPoolId : authentication.userPool.userPoolId,
-      userPoolClientId : authentication.userPoolClient.userPoolClientId,
-      cognitoDomain: process.env.COGNITO_DOMAIN_PREFIX!,
-      api : chatbotAPI
-    })
     
+    const userInterface = new UserInterface(this, "UserInterface");
+
+    const authorization = new AuthorizationStack(this, "Authorization", { 
+      distributionDomainName: userInterface.cloudfrontDistribution.distributionDomainName
+    });
+
+    new ChatBotApi(this, "ChatbotAPI", { 
+      httpAuthorizer: authorization.httpAuthorizer, 
+      wsAuthorizer: authorization.wsAuthorizer, 
+      cloudfrontDistribution: userInterface.cloudfrontDistribution,
+      websiteBucket: userInterface.websiteBucket, 
+      userPoolID: authorization.userPoolID, 
+      userPoolClientID: authorization.userPoolClientID
+    });
   }
 }

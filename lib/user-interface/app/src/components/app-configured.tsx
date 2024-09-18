@@ -46,7 +46,6 @@ export default function AppConfigured() {
             Auth.federatedSignIn();
           }
         } catch (error) {
-          throw currentConfig;
           // however, just in case, we'll add another try catch
           setError(true);
         }
