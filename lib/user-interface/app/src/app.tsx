@@ -8,6 +8,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { AppContext } from "./common/app-context";
+import { AdminProvider } from "./common/admin-context"
 import GlobalHeader from "./components/global-header";
 import Playground from "./pages/chatbot/playground/playground";
 import DataPage from "./pages/admin/data-view-page";
@@ -22,28 +23,30 @@ function App() {
 
   return (
     <div style={{ height: "100%" }}>
-      <Router>
-        <GlobalHeader />
-        <div style={{ height: "56px", backgroundColor: "#0C2639" }}>&nbsp;</div>
-        <div>
-          <Routes>            
-            <Route
+      <AdminProvider> {/* Wrap your Router with AdminProvider */}
+        <Router>
+          <GlobalHeader />
+          <div style={{ height: "56px", backgroundColor: "#0C2639" }}>&nbsp;</div>
+          <div>
+            <Routes>
+              <Route
                 index
                 path="/"
                 element={<Navigate to={`/chatbot/playground/${uuidv4()}`} replace />}
-            />            
-            <Route path="/chatbot" element={<Outlet />}>
-              <Route path="playground/:sessionId" element={<Playground />} />
-              <Route path="sessions" element={<SessionPage />} />              
-            </Route>
-            <Route path="/admin" element={<Outlet />}>                 
-             <Route path="data" element={<DataPage />} />   
-             <Route path="user-feedback" element={<UserFeedbackPage />} />                           
-            </Route>            
-            <Route path="*" element={<Navigate to={`/chatbot/playground/${uuidv4()}`} replace />} />
-          </Routes>
-        </div>
-      </Router>
+              />
+              <Route path="/chatbot" element={<Outlet />}>
+                <Route path="playground/:sessionId" element={<Playground />} />
+                <Route path="sessions" element={<SessionPage />} />
+              </Route>
+              <Route path="/admin" element={<Outlet />}>
+                <Route path="data" element={<DataPage />} />
+                <Route path="user-feedback" element={<UserFeedbackPage />} />
+              </Route>
+              <Route path="*" element={<Navigate to={`/chatbot/playground/${uuidv4()}`} replace />} />
+            </Routes>
+          </div>
+        </Router>
+      </AdminProvider>
     </div>
   );
 }

@@ -31,7 +31,7 @@ check_system_prompt_text_file() {
         echo $"\n"
         printf '%.0s-' {1..100}
         # Prompt the user to confirm
-        read -rep $'\n'"[ACTION] Do you confirm deployment with the above details? (y/n): " confirmation
+        read -rep $'\n'"[ACTION] Do you confirm deployment with the above details? (Y/n): " confirmation
         # Checks validation
         if [ "$confirmation" != "y" ] && [ "$confirmation" != "" ]; then
             echo "\n[ACTION] Deployment process terminated by user."

@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { UserPool, UserPoolIdentityProviderOidc, UserPoolClient, UserPoolClientIdentityProvider, ProviderAttribute } from 'aws-cdk-lib/aws-cognito';
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { WebSocketLambdaAuthorizer, HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import * as path from 'path';
 
@@ -15,6 +16,8 @@ export class AuthorizationStack extends Construct {
   public readonly wsAuthorizer: WebSocketLambdaAuthorizer;
   public readonly userPoolID: string;
   public readonly userPoolClientID: string;
+  public readonly authenticatedRoleArn: string;
+  public readonly identityPoolID: string;
 
   constructor(scope: Construct, id: string, props: AuthorizationProps) {
     super(scope, id);
@@ -35,6 +38,43 @@ export class AuthorizationStack extends Construct {
       // ... other user pool configurations
     });
 
+    // Create 2 
+    const userPoolBasicGroup = new cognito.CfnUserPoolGroup(this, 'BasicUserGroup', {
+      groupName: 'BasicUsers',
+      userPoolId: userPool.userPoolId
+    });
+
+    const userPoolAdminGroup = new cognito.CfnUserPoolGroup(this, 'AdminUserGroup', {
+      groupName: 'AdminUsers',
+      userPoolId: userPool.userPoolId
+    });
+
+    const addUserToGroupLambda = new lambda.Function(this, 'AddUserToGroupLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, "user-group-handler")),
+      environment: {
+        BASIC_USER_GROUP_NAME: userPoolBasicGroup.groupName!
+      }
+    });
+
+    // Grant the Lambda function permission to add users to groups
+    addUserToGroupLambda.role!.attachInlinePolicy(
+      new iam.Policy(this, "UserGroupPolicy", {
+        statements: [
+          new iam.PolicyStatement({
+            actions: ['cognito-idp:AdminAddUserToGroup'],
+            resources: [userPool.userPoolArn],
+          })
+        ]
+      }
+    ));
+
+    userPool.addTrigger(
+      cognito.UserPoolOperation.POST_AUTHENTICATION,
+      addUserToGroupLambda
+    )
+
     // Create a provider attribute for mapping Azure claims
     // const providerAttribute = new ProviderAttribute({
     //   name: 'custom_attr',
@@ -45,7 +85,6 @@ export class AuthorizationStack extends Construct {
         domainPrefix: process.env.COGNITO_DOMAIN_PREFIX!,
       },
     });
-    
     
     // Add the OIDC identity provider to the User Pool
     const oidcProvider = new UserPoolIdentityProviderOidc(this, 
@@ -81,7 +120,7 @@ export class AuthorizationStack extends Construct {
           authorizationCodeGrant: true,
           implicitCodeGrant: true
         },
-        callbackUrls: ["https://" + props.distributionDomainName],
+        callbackUrls: ["https://" + (process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL ? process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL : props.distributionDomainName)],
         logoutUrls: [process.env.COGNITO_USER_POOL_CLIENT_LOGOUT_URL!],
       },
     });

@@ -20,31 +20,31 @@ class DecimalEncoder(json.JSONEncoder):
 
 def lambda_handler(event, context):
     # Determine the type of HTTP method
-    admin = False
-    try:
-        claims = event["requestContext"]["authorizer"]["jwt"]["claims"]
-        roles = json.loads(claims['custom:role'])
-        if "Admin" in roles:                        
-            print("admin granted!")
-            admin = True
-        else:
-            print("Caught error: attempted unauthorized admin access")
-            admin = False
-    except:
-        print("Caught error: admin access and user roles are not present")
-        # return {
-        #         'statusCode': 500,
-        #         'headers': {'Access-Control-Allow-Origin': '*'},
-        #         'body': json.dumps('Unable to check user role, please ensure you have Cognito configured correctly with a custom:role attribute.')
-        #     }
+    # admin = False
+    # try:
+    #     claims = event["requestContext"]["authorizer"]["jwt"]["claims"]
+    #     roles = json.loads(claims['custom:role'])
+    #     if "Admin" in roles:                        
+    #         print("admin granted!")
+    #         admin = True
+    #     else:
+    #         print("Caught error: attempted unauthorized admin access")
+    #         admin = False
+    # except:
+    #     print("Caught error: admin access and user roles are not present")
+    #     return {
+    #             'statusCode': 500,
+    #             'headers': {'Access-Control-Allow-Origin': '*'},
+    #             'body': json.dumps('Unable to check user role, please ensure you have Cognito configured correctly with a custom:role attribute.')
+    #         }
     http_method = event.get('routeKey')
     if 'POST' in http_method:
-        if event.get('rawPath') == '/user-feedback/download-feedback' and admin:
+        if event.get('rawPath') == '/user-feedback/download-feedback':# and admin:
             return download_feedback(event)
         return post_feedback(event)
-    elif 'GET' in http_method and admin:
+    elif 'GET' in http_method:# and admin:
         return get_feedback(event)
-    elif 'DELETE' in http_method and admin:
+    elif 'DELETE' in http_method:# and admin:
         return delete_feedback(event)
     else:
         return {

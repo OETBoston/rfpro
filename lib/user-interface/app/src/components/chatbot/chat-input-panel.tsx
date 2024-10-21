@@ -194,7 +194,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         messageHistoryRef.current.pop();
         messageHistoryRef.current.push({
           type: ChatBotMessageType.AI,          
-          content: 'Response timed out!',
+          content: `Sorry, I had a bit of trouble processing that question, please type it again in the search bar. I'll try my best to help you with your questions.`,
           metadata: {},
         })
       }},60000)
@@ -207,41 +207,28 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           "data": {
             userMessage: messageToSend,
             chatHistory: assembleHistory(messageHistoryRef.current.slice(0, -2)),
-            systemPrompt: `You are an AI assistant for City officials in Boston, specializing in helping draft Requests for Proposals (RFPs) and Scopes of Work (SOW). 
-            Your primary function is to aid in creating clear, comprehensive, and compliant documents for city projects and procurements.
-            Key responsibilities:
-            1. Assist in drafting RFPs and SOWs based on project requirements and city guidelines.
-            2. Provide templates and examples of well-written RFPs and SOWs for various types of City projects.
-            3. Offer suggestions for improving clarity, completeness, and compliance of draft documents.
-            4. Answer questions about Boston's procurement processes and requirements.
-            5. Highlight any potential issues or areas that may need further clarification in draft documents.
-            
-            Guidelines:
-            1. Base your responses on established Boston City procurement policies and best practices. If you are unsure about a specific policy or requirement, 
-            advise the official to consult with the Procurement Department.
-            2. Maintain a professional and impartial tone in all document drafts and communications.
-            3. Ensure all suggested language complies with Massachusetts state laws and Boston city regulations regarding public procurement.
-            4. If asked about specific budget amounts or proprietary information, remind officials that such details should be handled internally and not shared with the AI system.
-            5. For highly technical or specialized projects, recommend that subject matter experts review the final documents.
-            
-            Key contacts:
-            1. Boston Procurement Department: 617-635-4564 or procurementoffice@boston.gov
-            2. City of Boston Law Department: 617-635-4034 (for legal review of complex RFPs)
-            
-            Remember: While you can provide valuable assistance in drafting and reviewing RFPs and SOWs, final approval and issuance of these documents 
-            must always be done by authorized city officials. If you encounter a request that seems to fall outside the scope of RFP or SOW preparation, 
-            politely redirect the official to the appropriate city department or resource`,
             projectId: 'rsrs111111',
             user_id: username,
             session_id: props.session.id
           }
         });
-        
         ws.send(message);
-        
       });
       // Event listener for incoming messages
       ws.addEventListener('message', async function incoming(data) {
+        let parsedData;
+        // Attempt to parse the incoming data
+        try {
+          parsedData = JSON.parse(data.data);
+          // Check for specific error message and skip this message if it matches
+          if (parsedData.message === "Endpoint request timed out") {
+            console.log("API Gateway Timeout Message Caught");
+            return; // Skip this message
+          }
+        } catch {
+          // Not timeout error, do nothing
+        }
+
         /**This is a custom tag from the API that denotes that an error occured
          * and the next chunk will be an error message. */              
         if (data.data.includes("<!ERROR!>:")) {
@@ -261,6 +248,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         } else {
           let sourceData = JSON.parse(data.data);
           sourceData = sourceData.map((item) => {
+            console.log(item)
             if (item.title == "") {
               return {title: item.uri.slice((item.uri as string).lastIndexOf("/") + 1), uri: item.uri}
             } else {
@@ -290,6 +278,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         ];        
         props.setMessageHistory(messageHistoryRef.current);        
       });
+
       // Handle possible errors
       ws.addEventListener('error', function error(err) {
         console.error('WebSocket error:', err);

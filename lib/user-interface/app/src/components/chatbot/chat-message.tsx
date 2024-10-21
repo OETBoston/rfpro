@@ -23,7 +23,7 @@ import {
   ChatBotHistoryItem,
   ChatBotMessageType,
 } from "./types";
-
+import { useAdmin } from "../../common/admin-context.js";
 
 import "react-json-view-lite/dist/index.css";
 import "../../styles/app.scss";
@@ -37,9 +37,8 @@ export interface ChatMessageProps {
   onThumbsDown: (feedbackTopic : string, feedbackType : string, feedbackMessage: string) => void;  
 }
 
-
-
 export default function ChatMessage(props: ChatMessageProps) {
+  const isAdmin = useAdmin();
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedIcon, setSelectedIcon] = useState<1 | 0 | null>(null);
   const { addNotification, removeNotification } = useNotifications();
@@ -47,6 +46,7 @@ export default function ChatMessage(props: ChatMessageProps) {
   const [selectedTopic, setSelectedTopic] = React.useState({label: "Select a Topic", value: "1"});
   const [selectedFeedbackType, setSelectedFeedbackType] = React.useState({label: "Select a Problem", value: "1"});
   const [value, setValue] = useState("");
+  const [hasFirstClick, setHasFirstClick] = useState(true);
 
 
   const content =
@@ -121,10 +121,25 @@ export default function ChatMessage(props: ChatMessageProps) {
           footer={
             showSources && (
               <SpaceBetween direction="horizontal" size="s">
-              <ButtonDropdown
-              items={(props.message.metadata.Sources as any[]).map((item) => { return {id: "id", disabled: false, text : item.title, href : item.uri, external : true, externalIconAriaLabel: "(opens in new tab)"}})}
-        
-              >Sources</ButtonDropdown>              
+              <div
+                  onClick={() => {
+                    if (!isAdmin && hasFirstClick) {
+                      setHasFirstClick(false)
+                      const id = addNotification("info", "If you have any questions about these sources, please reach out to the Boston Procurement Department (617-635-4564 or procurement@boston.gov)")
+                      Utils.delay(3000).then(() => removeNotification(id));
+                    }
+                  }}>
+                <ButtonDropdown
+                items={
+                (props.message.metadata.Sources as any[]).map((item) => {
+                  if (isAdmin) {
+                      return { id: "id", disabled: false, text: item.title, href: item.uri, external: true, externalIconAriaLabel: "(opens in new tab)" }
+                    } else {
+                      return { id: "id", disabled: true, text: item.title}
+                    }
+                  })}
+                >Sources</ButtonDropdown>
+              </div>              
               </SpaceBetween>
             )
           }
