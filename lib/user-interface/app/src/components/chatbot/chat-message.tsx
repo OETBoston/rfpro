@@ -123,8 +123,10 @@ export default function ChatMessage(props: ChatMessageProps) {
               <SpaceBetween direction="horizontal" size="s">
               <div
                   onClick={() => {
+                    console.log(hasFirstClick)
                     if (!isAdmin && hasFirstClick) {
                       setHasFirstClick(false)
+                      console.log("after", hasFirstClick)
                       const id = addNotification("info", "If you have any questions about these sources, please reach out to the Boston Procurement Department (617-635-4564 or procurement@boston.gov)")
                       Utils.delay(3000).then(() => removeNotification(id));
                     }
