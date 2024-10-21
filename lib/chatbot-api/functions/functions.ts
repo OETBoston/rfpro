@@ -56,50 +56,60 @@ export class LambdaFunctionStack extends cdk.Stack {
 
     this.sessionFunction = sessionAPIHandlerFunction;
 
-        // Define the Lambda function resource
-        const websocketAPIFunction = new lambda.Function(scope, 'ChatHandlerFunction', {
-          runtime: lambda.Runtime.NODEJS_20_X, // Choose any supported Node.js runtime
-          code: lambda.Code.fromAsset(path.join(__dirname, 'websocket-chat')), // Points to the lambda directory
-          handler: 'index.handler', // Points to the 'hello' file in the lambda directory
-          environment : {
-            "WEBSOCKET_API_ENDPOINT" : props.wsApiEndpoint.replace("wss","https"),
-            "INDEX_ID" : props.kendraIndex.attrId,
-            "PROMPT_DATA_BUCKET_NAME": process.env.CDK_STACK_NAME!.toLowerCase() + "-prompt-data-bucket"},
-          timeout: cdk.Duration.seconds(300)
-        });
-        websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: [
-            'bedrock:InvokeModelWithResponseStream',
-            'bedrock:InvokeModel'
-          ],
-          resources: ["*"]
-        }));
-        websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: [
-            'kendra:Retrieve'
-          ],
-          resources: [props.kendraIndex.attrArn]
-        }));
+    // Define the Lambda function resource
+    const websocketAPIFunction = new lambda.Function(scope, 'ChatHandlerFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X, // Choose any supported Node.js runtime
+      code: lambda.Code.fromAsset(path.join(__dirname, 'websocket-chat')), // Points to the lambda directory
+      handler: 'index.handler', // Points to the 'hello' file in the lambda directory
+      environment : {
+        "WEBSOCKET_API_ENDPOINT" : props.wsApiEndpoint.replace("wss","https"),
+        "INDEX_ID" : props.kendraIndex.attrId,
+        "PROMPT_DATA_BUCKET_NAME": process.env.CDK_STACK_NAME!.toLowerCase() + "-prompt-data-bucket"},
+      timeout: cdk.Duration.seconds(900),
+      memorySize: 256
+    });
 
-        websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: [
-            's3:GetObject'
-          ],
-          resources: ['arn:aws:s3:::' + process.env.CDK_STACK_NAME!.toLowerCase() + "-prompt-data-bucket" + '/*']
-        }));
+    websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'bedrock:InvokeModelWithResponseStream',
+        'bedrock:InvokeModel'
+      ],
+      resources: ["*"]
+    }));
+    websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'kendra:Retrieve'
+      ],
+      resources: [props.kendraIndex.attrArn]
+    }));
 
-        websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: [
-            'lambda:InvokeFunction'
-          ],
-          resources: [this.sessionFunction.functionArn]
-        }));
-        
-        this.chatFunction = websocketAPIFunction;
+    websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        's3:GetObject'
+      ],
+      resources: [props.knowledgeBucket.bucketArn + '/*']
+    }));
+
+    websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        's3:GetObject'
+      ],
+      resources: ['arn:aws:s3:::' + process.env.CDK_STACK_NAME!.toLowerCase() + "-prompt-data-bucket" + '/*']
+    }));
+
+    websocketAPIFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'lambda:InvokeFunction'
+      ],
+      resources: [this.sessionFunction.functionArn]
+    }));
+    
+    this.chatFunction = websocketAPIFunction;
 
     const feedbackAPIHandlerFunction = new lambda.Function(scope, 'FeedbackHandlerFunction', {
       runtime: lambda.Runtime.PYTHON_3_12, // Choose any supported Node.js runtime

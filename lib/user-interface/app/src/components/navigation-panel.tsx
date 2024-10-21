@@ -19,7 +19,7 @@ import { v4 as uuidv4 } from "uuid";
 import { SessionRefreshContext } from "../common/session-refresh-context"
 import { useNotifications } from "../components/notif-manager";
 import { Utils } from "../common/utils.js";
-
+import { useAdmin } from "../common/admin-context.js";
 
 export default function NavigationPanel() {
   const appContext = useContext(AppContext);
@@ -35,8 +35,7 @@ export default function NavigationPanel() {
   const [activeHref, setActiveHref] = useState(
     window.location.pathname
   );
-
-
+  const isAdmin = useAdmin();
 
   // update the list of sessions
   const loadSessions = async () => {
@@ -70,7 +69,7 @@ export default function NavigationPanel() {
   // to request a session refresh (such as if a chat has just been created)
   useEffect(() => {
     loadSessions();
-  }, [needsRefresh]);
+  }, [needsRefresh, isAdmin]);
 
 
   const onReloadClick = async () => {
@@ -100,25 +99,16 @@ export default function NavigationPanel() {
         }]),
       },
     ];
-    try {
-      const result = await Auth.currentAuthenticatedUser();
-      const admin = result?.signInUserSession?.idToken?.payload["custom:role"]
-      if (admin) {
-        const data = JSON.parse(admin);
-        if (data.includes("Admin")) {
-          console.log("admin found!")
-          newItems.push({
-            type: "section",
-            text: "Admin",
-            items: [
-              { type: "link", text: "Data", href: "/admin/data" },
-              { type: "link", text: "User Feedback", href: "/admin/user-feedback" }
-            ],
-          },)
-        }
-      }
-    } catch (e) {
-      console.log(e)
+    console.log(isAdmin)
+    if (isAdmin) {
+      newItems.push({
+        type: "section",
+        text: "Admin",
+        items: [
+          { type: "link", text: "Data", href: "/admin/data" },
+          { type: "link", text: "User Feedback", href: "/admin/user-feedback" }
+        ],
+      },)
     }
     setItems(newItems);
   };

@@ -37,75 +37,88 @@ export class Website extends Construct {
       }
     );
 
+    const baseDistributionProps : cf.CloudFrontWebDistributionProps = {
+      viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      priceClass: cf.PriceClass.PRICE_CLASS_ALL,
+      httpVersion: cf.HttpVersion.HTTP2_AND_3,
+      loggingConfig: {
+        bucket: distributionLogsBucket,
+      },
+      originConfigs: [
+        {
+          behaviors: [{ isDefaultBehavior: true }],
+          s3OriginSource: {
+            s3BucketSource: props.websiteBucket,
+            originAccessIdentity,
+          },
+        },
+        {
+          behaviors: [
+            {
+              pathPattern: "/chatbot/files/*",
+              allowedMethods: cf.CloudFrontAllowedMethods.ALL,
+              viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+              defaultTtl: cdk.Duration.seconds(0),
+              forwardedValues: {
+                queryString: true,
+                headers: [
+                  "Referer",
+                  "Origin",
+                  "Authorization",
+                  "Content-Type",
+                  "x-forwarded-user",
+                  "Access-Control-Request-Headers",
+                  "Access-Control-Request-Method",
+                ],
+              },
+            },
+          ],
+          s3OriginSource: {
+            s3BucketSource: props.websiteBucket,
+            originAccessIdentity,
+          },
+        },
+      ],
+
+      // geoRestriction: cfGeoRestrictEnable ? cf.GeoRestriction.allowlist(...cfGeoRestrictList): undefined,
+      errorConfigurations: [
+        {
+          errorCode: 404,
+          errorCachingMinTtl: 0,
+          responseCode: 200,
+          responsePagePath: "/index.html",
+        },
+      ],
+    }
+
+    // CUSTOM DOMAIN FOR PUBLIC WEBSITE
+    // REQUIRES:
+    // 1. ACM Certificate ARN in us-east-1 and Domain of website to be input during 'npm run config':
+    //    "privateWebsite" : false,
+    //    "certificate" : "arn:aws:acm:us-east-1:1234567890:certificate/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXX",
+    //    "domain" : "sub.example.com"
+    // 2. After the deployment, in your Route53 Hosted Zone, add an "A Record" that points to the Cloudfront Alias (https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-to-cloudfront-distribution.html)
+    // ...(props.config.certificate && props.config.domain && {
+    //   viewerCertificate: cf.ViewerCertificate.fromAcmCertificate(
+    //     acm.Certificate.fromCertificateArn(this,'CloudfrontAcm', props.config.certificate),
+    //     {
+    //       aliases: [props.config.domain]
+    //     })-----------
+    // }),
+
     const distribution = new cf.CloudFrontWebDistribution(
       this,
       "Distribution",
       {
-        // CUSTOM DOMAIN FOR PUBLIC WEBSITE
-        // REQUIRES:
-        // 1. ACM Certificate ARN in us-east-1 and Domain of website to be input during 'npm run config':
-        //    "privateWebsite" : false,
-        //    "certificate" : "arn:aws:acm:us-east-1:1234567890:certificate/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXX",
-        //    "domain" : "sub.example.com"
-        // 2. After the deployment, in your Route53 Hosted Zone, add an "A Record" that points to the Cloudfront Alias (https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-to-cloudfront-distribution.html)
-        // ...(props.config.certificate && props.config.domain && {
-        //   viewerCertificate: cf.ViewerCertificate.fromAcmCertificate(
-        //     acm.Certificate.fromCertificateArn(this,'CloudfrontAcm', props.config.certificate),
-        //     {
-        //       aliases: [props.config.domain]
-        //     })
-        // }),
-        viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        priceClass: cf.PriceClass.PRICE_CLASS_ALL,
-        httpVersion: cf.HttpVersion.HTTP2_AND_3,
-        loggingConfig: {
-          bucket: distributionLogsBucket,
-        },
-        originConfigs: [
-          {
-            behaviors: [{ isDefaultBehavior: true }],
-            s3OriginSource: {
-              s3BucketSource: props.websiteBucket,
-              originAccessIdentity,
-            },
-          },
-          {
-            behaviors: [
-              {
-                pathPattern: "/chatbot/files/*",
-                allowedMethods: cf.CloudFrontAllowedMethods.ALL,
-                viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                defaultTtl: cdk.Duration.seconds(0),
-                forwardedValues: {
-                  queryString: true,
-                  headers: [
-                    "Referer",
-                    "Origin",
-                    "Authorization",
-                    "Content-Type",
-                    "x-forwarded-user",
-                    "Access-Control-Request-Headers",
-                    "Access-Control-Request-Method",
-                  ],
-                },
-              },
-            ],
-            s3OriginSource: {
-              s3BucketSource: props.websiteBucket,
-              originAccessIdentity,
-            },            
-          },
-        ],
-        
-        // geoRestriction: cfGeoRestrictEnable ? cf.GeoRestriction.allowlist(...cfGeoRestrictList): undefined,
-        errorConfigurations: [
-          {
-            errorCode: 404,
-            errorCachingMinTtl: 0,
-            responseCode: 200,
-            responsePagePath: "/index.html",
-          },
-        ],
+        ...baseDistributionProps,
+        ...((process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL && process.env.CLOUDFRONT_CUSTOM_DOMAIN_SSL_CERTIFICATE_ARN) ? {
+          viewerCertificate: cf.ViewerCertificate.fromAcmCertificate(
+            acm.Certificate.fromCertificateArn(this, 'CloudfrontAcm', process.env.CLOUDFRONT_CUSTOM_DOMAIN_SSL_CERTIFICATE_ARN),
+            {
+              aliases: [process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL]
+            }
+          )
+        } : {})
       }
     );
 

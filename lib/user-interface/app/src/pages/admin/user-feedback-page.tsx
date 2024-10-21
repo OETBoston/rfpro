@@ -17,43 +17,16 @@ import FeedbackPanel from "../../components/feedback-panel";
 import { CHATBOT_NAME } from "../../common/constants";
 import { useState, useEffect } from "react";
 import { Auth } from "aws-amplify";
+import { useAdmin } from "../../common/admin-context.js";
 
 
 export default function UserFeedbackPage() {
+  const isAdmin = useAdmin();
   const onFollow = useOnFollow();  
   const [feedback, setFeedback] = useState<any>({});
-  const [admin, setAdmin] = useState<boolean>(false);
-
-  /** Check if the signed-in user is an admin */
-  useEffect(() => {
-    (async () => {
-      const result = await Auth.currentAuthenticatedUser();
-      // console.log(result);  
-      if (!result || Object.keys(result).length === 0) {
-        console.log("Signed out!")
-        Auth.signOut();
-        return;
-      }
-
-      try {
-        const result = await Auth.currentAuthenticatedUser();
-        const admin = result?.signInUserSession?.idToken?.payload["custom:role"]
-        if (admin) {
-          const data = JSON.parse(admin);
-          if (data.includes("Admin")) {
-            setAdmin(true);
-          }
-        }
-      }
-      catch (e){
-        // const userName = result?.attributes?.email;
-        console.log(e);
-      }
-    })();
-  }, []);
 
   /** If they are not an admin, show a page indicating so */
-  if (!admin) {
+  if (!isAdmin) {
     return (
       <div
         style={{

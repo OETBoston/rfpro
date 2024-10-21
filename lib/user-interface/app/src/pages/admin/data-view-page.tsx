@@ -16,10 +16,11 @@ import { Auth } from "aws-amplify";
 import DataFileUpload from "./file-upload-tab";
 import { ApiClient } from "../../common/api-client/api-client";
 import { AppContext } from "../../common/app-context";
+import { useAdmin } from "../../common/admin-context.js";
 
 export default function DataPage() {
   const onFollow = useOnFollow();
-  const [admin, setAdmin] = useState<boolean>(false);
+  const isAdmin = useAdmin();
   const [activeTab, setActiveTab] = useState("file");
   const appContext = useContext(AppContext);
   const apiClient = new ApiClient(appContext);
@@ -36,35 +37,8 @@ export default function DataPage() {
     }
   }
 
-  /** Checks for admin status */
-  useEffect(() => {
-    (async () => {
-      try {
-        const result = await Auth.currentAuthenticatedUser();
-        if (!result || Object.keys(result).length === 0) {
-          console.log("Signed out!")
-          Auth.signOut();
-          return;
-        }
-        const admin = result?.signInUserSession?.idToken?.payload["custom:role"]
-        if (admin) {
-          const data = JSON.parse(admin);
-          if (data.includes("Admin")) {
-            setAdmin(true);
-          }
-        }
-      }
-      /** If there is some issue checking for admin status, just do nothing and the
-       * error page will show up
-        */
-      catch (e) {
-        console.log(e);
-      }
-    })();
-  }, []);
-
   /** If the admin status check fails, just show an access denied page*/
-  if (!admin) {
+  if (!isAdmin) {
     return (
       <div
         style={{

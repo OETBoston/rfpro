@@ -16,6 +16,7 @@ import { aws_apigatewayv2 as apigwv2 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { readFile } from 'fs/promises';
 import { CloudFrontWebDistribution, Distribution } from "aws-cdk-lib/aws-cloudfront";
+import { Role } from "aws-cdk-lib/aws-iam";
 
 export interface ChatBotApiProps {
   readonly cloudfrontDistribution: CloudFrontWebDistribution;
@@ -176,7 +177,7 @@ export class ChatBotApi extends Construct {
         oauth: {
           domain: process.env.COGNITO_DOMAIN_PREFIX!.concat(".auth.", cdk.Aws.REGION ,".amazoncognito.com"),
           scope: ["aws.cognito.signin.user.admin", "email", "openid", "profile"],
-          redirectSignIn: "https://" + props.cloudfrontDistribution.distributionDomainName,
+          redirectSignIn: "https://" + (process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL ? process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL : props.cloudfrontDistribution.distributionDomainName),
           redirectSignOut: process.env.COGNITO_USER_POOL_CLIENT_LOGOUT_URL!,
           responseType: "code"
         }

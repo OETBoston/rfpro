@@ -20,7 +20,7 @@ export class RagAppStack extends cdk.Stack {
       wsAuthorizer: authorization.wsAuthorizer, 
       cloudfrontDistribution: userInterface.cloudfrontDistribution,
       websiteBucket: userInterface.websiteBucket, 
-      userPoolID: authorization.userPoolID, 
+      userPoolID: authorization.userPoolID,
       userPoolClientID: authorization.userPoolClientID
     });
   }

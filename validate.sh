@@ -1,13 +1,14 @@
 #!/bin/bash
-source .env
+source $PWD/.env
 
 echo $"\n[INFO] Validating Configuration Data..."\
 
 # Validate AWS CLI profile
 validate_aws_profile() {
     local profile=$1
-    if ! aws sts get-caller-identity --profile "$profile" > /dev/null 2>&1; then
-        error_list+=("\n[ERROR] AWS_PROFILE '$profile' does not exist or is not configured.")
+    if ! aws sts get-caller-identity --profile "$profile" --no-verify-ssl > /dev/null 2>&1; then
+        error_list+=("\n[ERROR] AWS_PROFILE '$profile' does not exist or is not properly configured.")
+        error_list+=("\n[ERROR] Try running [ aws sts get-caller-identity --profile '$profile' ]for specifics.")
         error_list+=("\n[INFO] You must declare the value of AWS_PROFILE in the .env file at the project root to proceed. Reference .env.example for details.")
     else
         echo "\n[SUCCESS] Preconfigured AWS_PROFILE '$profile' will be used for deployment."
@@ -31,7 +32,7 @@ check_system_prompt_text_file() {
         echo $"\n"
         printf '%.0s-' {1..100}
         # Prompt the user to confirm
-        read -rep $'\n'"[ACTION] Do you confirm deployment with the above details? (y/n): " confirmation
+        read -rep $'\n'"[ACTION] Do you confirm deployment with the above details? (Y/n): " confirmation
         # Checks validation
         if [ "$confirmation" != "y" ] && [ "$confirmation" != "" ]; then
             echo "\n[ACTION] Deployment process terminated by user."
