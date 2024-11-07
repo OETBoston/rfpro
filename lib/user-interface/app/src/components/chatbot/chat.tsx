@@ -19,7 +19,7 @@ export default function Chat(props: { sessionId?: string}) {
   const appContext = useContext(AppContext);
   const [running, setRunning] = useState<boolean>(true);
   const [session, setSession] = useState<{ id: string; loading: boolean }>({
-    id: props.sessionId ?? uuidv4(),
+    id: props.sessionId,
     loading: typeof props.sessionId !== "undefined",
   });  
 
@@ -49,12 +49,13 @@ export default function Chat(props: { sessionId?: string}) {
       setSession({ id: props.sessionId, loading: true });
       const apiClient = new ApiClient(appContext);
       try {
-        // const result = await apiClient.sessions.getSession(props.sessionId);
+        console.log("Chat 52")
+        console.log(props.sessionId)
         let username;
         await Auth.currentAuthenticatedUser().then((value) => username = value.username);
         if (!username) return;
-        const hist = await apiClient.sessions.getSession(props.sessionId,username);
-
+        const hist = await apiClient.sessions.getSession(props.sessionId, username);
+        console.log(hist)
         if (hist) {
           
           ChatScrollState.skipNextHistoryUpdate = true;
@@ -109,9 +110,11 @@ export default function Chat(props: { sessionId?: string}) {
 
   /** Makes the API call via the ApiClient to submit the feedback */
   const addUserFeedback = async (feedbackData : FeedbackData) => {
+    console.log("Chat 112")
     if (!appContext) return;
     const apiClient = new ApiClient(appContext);
     await apiClient.userFeedback.sendUserFeedback(feedbackData);
+
   }
 
   return (

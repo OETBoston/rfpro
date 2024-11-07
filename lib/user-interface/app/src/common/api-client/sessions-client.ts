@@ -36,7 +36,7 @@ export class SessionsClient {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + auth,
         },
-        body: JSON.stringify(all? { "operation": "list_all_sessions_by_user_id", "user_id": userId } : { "operation": "list_sessions_by_user_id", "user_id": userId })
+        body: JSON.stringify(all? { "action": "get_sessions_by_user", "user_id": userId, "limit": 100 } : { "action": "get_sessions_by_user", "user_id": userId })
       });
       if (response.status != 200) {
         validData = false;
@@ -82,7 +82,7 @@ export class SessionsClient {
           'Authorization': 'Bearer ' + auth,
         },
         body: JSON.stringify({
-          "operation": "get_session", "session_id": sessionId,
+          "action": "get_sessions_by_user", "session_id": sessionId,
           "user_id": userId
         })
       });

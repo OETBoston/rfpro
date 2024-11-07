@@ -1,292 +1,325 @@
-import os
+import os, json
 import boto3
-from botocore.exceptions import ClientError
-import json
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
+from decimal import Decimal
 
-# Retrieve DynamoDB table and secondary index names from environment variables
-DDB_TABLE_NAME = os.environ["DDB_TABLE_NAME"]
-# DDB_SECONDARY_INDEX_NAME = os.environ["DDB_SECONDARY_INDEX_NAME"]
+dynamodb = boto3.resource('dynamodb')
+sessions_table = dynamodb.Table(os.environ['SESSIONS_TABLE'])
+messages_table = dynamodb.Table(os.environ['MESSAGES_TABLE'])
+reviews_table = dynamodb.Table(os.environ['REVIEWS_TABLE'])
 
-# Initialize a DynamoDB resource using boto3 with a specific AWS region
-dynamodb = boto3.resource("dynamodb", region_name='us-east-1')
-# Connect to the specified DynamoDB table
-table = dynamodb.Table(DDB_TABLE_NAME)
+# Custom JSON encoder to handle Decimal objects
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)  # or str(obj) if you prefer
+        return super(DecimalEncoder, self).default(obj)
 
-# Define a function to add a session or update an existing one in the DynamoDB table
-def add_session(session_id, user_id, chat_history, title, new_chat_entry):
-    try:
-        # Attempt to add an item to the DynamoDB table with provided details
-        response = table.put_item(
-            Item={
-                'user_id': user_id,  # Identifier for the user
-                'session_id': session_id,  # Unique identifier for the session
-                'chat_history': [new_chat_entry],  # List of chat history, initiating with the new entry
-                "title": title.strip(),  # Title of the session
-                "time_stamp": str(datetime.now())  # Current timestamp as a string
-            }
-        )
-        # Return any attributes returned by the DynamoDB operation, default to an empty dictionary if none
-        return response.get("Attributes", {})
-    except ClientError as error:
-        # Check for specific DynamoDB client errors
-        print("Caught error: DynamoDB error - could not add new session")
-        if error.response["Error"]["Code"] == "ResourceNotFoundException":
-            # Return an error message if the DynamoDB resource (e.g., table, item) is not found
-            return {'statusCode': 404,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps(f"No record found with session id: {session_id}")}
-        else:
-            # Return a general error message for other client errors encountered
-            return {'statusCode': 500,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps(str(error))}
-
-
-# A function to retrieve a session from DynamoDB based on session_id and user_id
-def get_session(session_id, user_id):
-    # Initialize a variable to hold the response from DynamoDB
-    response = {}
-    try:
-        # Attempt to retrieve an item using the session_id and user_id as keys
-        response = table.get_item(Key={"session_id": session_id, "user_id": user_id})
-    except ClientError as error:
-        print("Caught error: DynamoDB error - could not get session")
-        # Handle specific error when the specified resource is not found in DynamoDB
-        if error.response["Error"]["Code"] == "ResourceNotFoundException":
-            # Return a 404 Not Found status code and message when the item is not found
-            return {
-                'statusCode': 404,
-                'headers': {'Access-Control-Allow-Origin': '*'},  # Allow all domains for CORS
-                'body':  json.dumps(f"No record found with session id: {session_id}")
-            }
-        else:
-            # Return a 500 Internal Server Error status for all other DynamoDB errors
-            return {
-                'statusCode': 500,
-                'headers': {'Access-Control-Allow-Origin': '*'},  # Allow all domains for CORS
-                'body': json.dumps('An unexpected error occurred')
-            }
-
-    # Prepare the response to the client with a 200 OK status if the item is successfully retrieved
-    response_to_client = {
-        'statusCode': 200,
-        'headers': {
-            'Access-Control-Allow-Origin': '*'  # Allow all domains for CORS
+# Helper function: Generate standardized success response
+def _format_response(data):
+    return {
+        "statusCode": 200,
+        "headers": {
+            'Access-Control-Allow-Origin': '*'
         },
-        'body': json.dumps(response.get("Item", {}))  # Convert the retrieved item to JSON format
+        "body": json.dumps(data, cls=DecimalEncoder)
     }
-    # Return the prepared response to the client
-    return response_to_client
 
-            
-def update_session(session_id, user_id, new_chat_entry):
-    try:
-        # Fetch current session details
-        session_response = get_session(session_id, user_id)
-        if 'statusCode' in session_response and session_response['statusCode'] != 200:
-            return session_response  # Return the error from get_session if any
-
-        session_data = json.loads(session_response['body'])
-        
-        # Check if 'chat_history' exists in the session data
-        current_chat_history = session_data.get('chat_history', [])
-        
-        # Append the new chat entry to the existing chat history
-        updated_chat_history = current_chat_history + [new_chat_entry]
-        
-        # Update the item in DynamoDB
-        response = table.update_item(
-            Key={"session_id": session_id, "user_id": user_id},
-            UpdateExpression="set chat_history = :chat_history",
-            ExpressionAttributeValues={":chat_history": updated_chat_history},
-            ReturnValues="UPDATED_NEW"
-        )
-        return {
-            'statusCode': 200,
-            'headers': {'Access-Control-Allow-Origin': '*' },
-            'body': response.get("Attributes", {})
-        }
-    except ClientError as error:
-        print("Caught error: DynamoDB error - could not update session")
-        # Return a structured error message and status code
-        error_code = error.response['Error']['Code']
-        if error_code == "ResourceNotFoundException":
-            return {
-                'statusCode': 404,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'error': str(error),
-                'body': f"No record found with session id: {session_id}"
-            }
-        else:
-            return {
-                'statusCode': 500,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'error': str(error),
-                'body': 'Failed to update the session due to a database error.'
-            }
-    except Exception as general_error:
-        print("Caught error: DynamoDB error - could not update session")
-        # Return a generic error response for unexpected errors
-        return {
-            'statusCode': 500,
-            'headers': {'Access-Control-Allow-Origin': '*'},
-            'error': str(general_error),
-            'body': 'An unexpected error occurred while updating the se.'
-        }
-
-
-def delete_session(session_id, user_id):
-    try:
-        # Attempt to delete an item from the DynamoDB table based on the provided session_id and user_id.
-        table.delete_item(Key={"session_id": session_id, "user_id": user_id})
-    except ClientError as error:
-        print("Caught error: DynamoDB error - could not delete session")
-        # Handle specific DynamoDB client errors. If the item cannot be found or another error occurs, return the appropriate message.
-        error_code = error.response['Error']['Code']
-        if error_code == "ResourceNotFoundException":
-            return { 'statusCode': 404, "id": session_id, "deleted": False,'headers': {'Access-Control-Allow-Origin': '*'}, "body": json.dumps(f"No record found with session id: {session_id}")}
-        else:
-            return { 'statusCode': 500, "id": session_id, "deleted": False,'headers': {'Access-Control-Allow-Origin': '*'}, "body": json.dumps(f"Error occurred: {error}")}
-
-    # If no exceptions are raised, return a response indicating that the deletion was successful.
-    return {'statusCode': 200, "id": session_id,'headers': {'Access-Control-Allow-Origin': '*'}, "deleted": True}
-
-
-
-def delete_user_sessions(user_id):
-    try:
-        # Fetch all sessions associated with the given user_id. This function should return a list of session dictionaries.
-        sessions = list_sessions_by_user_id(user_id)
-        ret_value = []  # Initialize a list to hold the results of the deletion attempts.
-
-        # Iterate through each session fetched from the database.
-        for session in sessions:
-            # Attempt to delete each session and capture the result.
-            result = delete_session(session["SessionId"], user_id)
-            # Append the result of the deletion attempt to the ret_value list. 
-            # This includes the session ID and whether the deletion was successful.
-            ret_value.append({"id": session["SessionId"], "deleted": result["deleted"]})
-
-        # Return a list of dictionaries, each containing the session ID and deletion result.
-        return ret_value
-
-    except Exception as error:
-        # Handle any unexpected errors that might occur during the process.
-        # Return a list containing a single dictionary with an error message.
-        return [{"error": str(error)}]
-        
-        
-def list_sessions_by_user_id(user_id, limit = 15):
-    items = []  # Initialize an empty list to store the fetched session items
-
-    try:
-        last_evaluated_key = None  # Initialize the key to control the pagination loop
-
-        # Keep fetching until we have 15 items or there are no more items to fetch
-        while len(items) < limit:
-            response = table.query(
-                IndexName='TimeIndex',  # Specify the secondary index to perform the query
-                ProjectionExpression='session_id, title, time_stamp',  # Limit the fields returned in the results
-                KeyConditionExpression="user_id = :user_id",  # Define the key condition for the query
-                ExpressionAttributeValues={":user_id": user_id},  # Bind the user_id value to the placeholder in KeyConditionExpression
-                ScanIndexForward=False,  # Sort the results in descending order by the sort key
-                Limit=limit - len(items),  # Dynamically adjust the query limit based on how many items we've already retrieved
-            )
-            items.extend(response.get("Items", []))  # Extend the items list with the newly fetched items
-
-            last_evaluated_key = response.get("LastEvaluatedKey")  # Update the pagination key
-            if not last_evaluated_key:  # Break the loop if there are no more items to fetch
-                break
-
-    except ClientError as error:
-        print("Caught error: DynamoDB error - could not list user sessions")
-        # More detailed client error handling based on DynamoDB error codes
-        error_code = error.response['Error']['Code']
-        if error_code == "ResourceNotFoundException":
-            return {'statusCode': 404,
-            'headers': { 'Access-Control-Allow-Origin': '*'}, 
-            'body': f"No record found for user id: {user_id}"}
-        elif error_code == "ProvisionedThroughputExceededException":
-            return {'statusCode': 429,
-            'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': "Request limit exceeded"}
-        elif error_code == "ValidationException":
-            return {'statusCode': 400,
-            'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': "Invalid input parameters"}
-        else:
-            return {'statusCode': 500,
-            'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': "Internal server error"}
-    except KeyError as key_error:
-        print("Caught error: DynamoDB error - could not list user sessions")
-        # Handle errors that might occur if expected keys are missing in the response
-        return {'statusCode': 500,
-        'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': f"Key error: {str(key_error)}"}
-    except Exception as general_error:
-        print("Caught error: DynamoDB error - could not list user sessions")
-        # Generic error handling for any other unforeseen errors
-        return {'statusCode': 500,
-        'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': json.dumps(f"An unexpected error occurred: {str(general_error)}")}
-
-    # Sort the items by 'time_stamp' in descending order to ensure the latest sessions appear first
-    sorted_items = sorted(items, key=lambda x: x['time_stamp'], reverse=True)
-    sorted_items = list(map(lambda x: {"time_stamp" : x["time_stamp"], "session_id" : x["session_id"], "title" : x["title"].strip()},sorted_items))
-
-    # Prepare the HTTP response object with a status code, headers, and body
-    response = {
-        'statusCode': 200,  # HTTP status code indicating a successful operation
-        'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
+# Helper function to generate standardized error response
+def _format_error_response(message):
+    return {
+        "statusCode": 400,
+        "headers": {
+            'Access-Control-Allow-Origin': '*'
         },
-        'body': json.dumps(sorted_items)  # Convert the sorted list of items to JSON format for the response body
+        "body": json.dumps({"error": message}, cls=DecimalEncoder)
     }
-    return response  # Return the response object
 
+# Helper Function: Generates a unique session ID based on current timestamp and uuid.
+def _generate_session_id():
+    return f"SESSION-{int(datetime.now(timezone('US/Eastern')).timestamp())}-{uuid.uuid4().hex[:8]}"
 
+# Helper Function: Generates a unique message ID based on current timestamp and uuid.
+def _generate_message_id():
+    return f"MESSAGE-{int(datetime.now(timezone('US/Eastern')).timestamp())}-{uuid.uuid4().hex[:8]}"
 
-
+# Main Lambda Handler
 def lambda_handler(event, context):
-    data = json.loads(event['body'])
-    operation = data.get('operation')
-    user_id = data.get('user_id')
-    session_id = data.get('session_id')
-    chat_history = data.get('chat_history', None)
-    new_chat_entry = data.get('new_chat_entry')
-    title = data.get('title', f"Chat on {str(datetime.now())}")
-    if operation != 'list_sessions_by_user_id':
-        print(operation)
-    print(data)
-    print(new_chat_entry)
+    try:
+        data = json.loads(event.get('body', '{}'))
+        action = data.get('action')
+        response_data = None
+        
+        if action == 'create_session':
+            response_data = create_session(data['user_id'], data['title'], data['user_prompt'], data['bot_response'], data['metadata'], data['sent_at'])
+        elif action == 'update_message_feedback':
+            response_data = update_message_feedback(data['message_id'], data['session_id'], data['feedback'])
+        elif action == 'add_message':
+            response_data = add_message(data['session_id'], data['user_prompt'], data['bot_response'], data['metadata'], data['sent_at'])
+        elif action == 'add_review':
+            response_data = add_review(data['session_id'], data['reviewed_by'], data['comments'])
+        elif action == 'get_sessions_with_reviews':
+            response_data = get_sessions_with_reviews()
+        elif action == 'get_sessions_by_user':
+            response_data = get_sessions_by_user(data['user_id'], data['limit']) if 'limit' in data else get_sessions_by_user(data['user_id'])
+        elif action == 'get_messages_by_session':
+            response_data = get_messages_by_session(data['session_id'])
+        elif action == 'get_session':
+            response_data = get_session(data['session_id'])
+        elif action == 'get_message':
+            response_data = get_message(data['message_id'])
+        elif action == 'get_review':
+            response_data = get_review(data['review_id'])
+        elif action == 'get_review_by_session':
+            response_data = get_review_by_session(data['session_id'])
+        elif action == 'delete_session':
+            response_data = delete_session(data['session_id'])
+        elif action == 'delete_user_sessions':
+            response_data = delete_user_sessions(data['user_id'])
+        else:
+            return _format_error_response("Invalid action")
+        return _format_response(response_data)
+    except Exception as e:
+        return _format_error_response(f"Error processing request: {str(e)}")
 
-    if operation == 'add_session':
-        return add_session(session_id, user_id, chat_history, title, new_chat_entry)
-    elif operation == 'get_session':
-        return get_session(session_id, user_id)
-    elif operation == 'update_session':
-        return update_session(session_id, user_id, new_chat_entry)
-    elif operation == 'list_sessions_by_user_id':
-        return list_sessions_by_user_id(user_id)
-    elif operation == 'list_all_sessions_by_user_id':
-        return list_sessions_by_user_id(user_id,limit=100)
-    elif operation == 'delete_session':
-        return delete_session(session_id, user_id)
-    elif operation == 'delete_user_sessions':
-        return delete_user_sessions(user_id)
-    else:
-        response = {
-            'statusCode': 400,
-            'headers': {
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps(f'Operation not found/allowed! Operation Sent: {operation}')
+def create_session(user_id, title, user_prompt, bot_response, metadata, sent_at):
+    sent_at_datetime = datetime.fromisoformat(sent_at)
+    current_time_datetime = datetime.utcnow()
+    current_time = current_time_datetime.isoformat()
+    session_id = _generate_session_id()
+    message_id = _generate_message_id()
+    
+    # Create session entry
+    sessions_table.put_item(
+        Item={
+            'pk_session_id': session_id,
+            'user_id': user_id,
+            'title': title,
+            'created_at': sent_at,
+            'updated_at': current_time,
+            'message_count': 1
         }
-        return response
+    )
+    
+    # Create initial message
+    response_time = Decimal(str((current_time_datetime - sent_at_datetime).total_seconds()))
+    messages_table.put_item(
+        Item={
+            'pk_message_id': message_id,
+            'sk_session_id': session_id,
+            'user_prompt': user_prompt,
+            'bot_response': bot_response,
+            'metadata': metadata,
+            'sent_at': sent_at,
+            'response_time': response_time
+        }
+    )
+    
+    return {"status": "Session created", "session_id": session_id, "message_id": message_id}
+
+def update_message_feedback(message_id, session_id, feedback):
+    feedback_created_at = datetime.utcnow().isoformat()
+    
+    # Update message feedback
+    messages_table.update_item(
+        Key={'pk_message_id': message_id, 'sk_session_id': session_id},
+        UpdateExpression="SET feedback_type = :ft, feedback_rank = :fr, feedback_category = :fc, feedback_message = :fm, feedback_created_at = :fca",
+        ExpressionAttributeValues={
+            ':ft': feedback['feedback_type'],
+            ':fr': feedback['feedback_rank'],
+            ':fc': feedback['feedback_category'],
+            ':fm': feedback.get('feedback_message', None),
+            ':fca': feedback_created_at
+        }
+    )
+    
+    # Update session's updated_at
+    sessions_table.update_item(
+        Key={'pk_session_id': session_id},
+        UpdateExpression="SET updated_at = :ua",
+        ExpressionAttributeValues={':ua': feedback_created_at}
+    )
+    
+    return {"status": "Feedback updated", "message_id": message_id}
+
+def add_message(session_id, user_prompt, bot_response, metadata, sent_at):
+    sent_at_datetime = datetime.fromisoformat(sent_at)
+    current_time_datetime = datetime.utcnow()
+    current_time = current_time_datetime.isoformat()
+    message_id = _generate_message_id()
+    
+    # Add new message
+    response_time = Decimal(str((current_time_datetime - sent_at_datetime).total_seconds()))
+    messages_table.put_item(
+        Item={
+            'pk_message_id': message_id,
+            'sk_session_id': session_id,
+            'user_prompt': user_prompt,
+            'bot_response': bot_response,
+            'metadata': metadata,
+            'sent_at': sent_at,
+            'response_time': response_time
+        }
+    )
+    
+    # Update session's updated_at and increment message_count
+    sessions_table.update_item(
+        Key={'pk_session_id': session_id},
+        UpdateExpression="SET updated_at = :ua, message_count = message_count + :inc",
+        ExpressionAttributeValues={':ua': current_time, ':inc': 1}
+    )
+    
+    return {"status": "Message added", "session_id": session_id, "message_id": message_id}
+
+def add_review(session_id, reviewed_by, comments):
+    review_id = f"review-{int(datetime.now().timestamp())}"
+    reviewed_at = datetime.utcnow().isoformat()
+    
+    reviews_table.put_item(
+        Item={
+            'pk_review_id': review_id,
+            'session_id': session_id,
+            'reviewed_by': reviewed_by,
+            'comments': comments,
+            'reviewed_at': reviewed_at
+        }
+    )
+    
+    return {"status": "Review added", "review_id": review_id}
+
+def get_sessions_with_reviews():
+    sessions = sessions_table.scan()['Items']
+    reviews = reviews_table.scan()['Items']
+    sessions_with_reviews = {s['pk_session_id']: s for s in sessions}
+    
+    for review in reviews:
+        session_id = review['session_id']
+        if session_id in sessions_with_reviews:
+            sessions_with_reviews[session_id]['review'] = review
+    
+    return list(sessions_with_reviews.values())
+
+def get_sessions_by_user(user_id, limit=15):
+    items = []
+    last_evaluated_key = None
+
+    while len(items) < limit:
+        query_params = {
+            'IndexName': 'UserSessionsIndex',
+            'KeyConditionExpression': 'user_id = :uid',
+            'ExpressionAttributeValues': {':uid': user_id},
+            'ScanIndexForward': False,
+            'Limit': limit - len(items)
+        }
+
+        # Only set ExclusiveStartKey if it's not None
+        if last_evaluated_key:
+            query_params['ExclusiveStartKey'] = last_evaluated_key
+
+        response = sessions_table.query(**query_params)
+        items.extend(response.get("Items", []))
+        
+        last_evaluated_key = response.get("LastEvaluatedKey")
+        if not last_evaluated_key:
+            break
+
+    # Sort the items by timestamp in descending order
+    sorted_items = sorted(items, key=lambda x: x['created_at'], reverse=True)
+
+    # Map the items to the desired structure
+    formatted_items = [
+        {
+            "session_id": item["pk_session_id"],
+            "title": item["title"].strip(),
+            "time_stamp": item["created_at"]
+        }
+        for item in sorted_items
+    ]
+    
+    return formatted_items
+
+def get_messages_by_session(session_id):
+    response = messages_table.query(
+        IndexName='SessionMessagesIndex',
+        KeyConditionExpression='sk_session_id = :sid',
+        ExpressionAttributeValues={':sid': session_id}
+    )
+    return response['Items']
+
+def get_session(session_id):
+    response = sessions_table.get_item(Key={'pk_session_id': session_id})
+    return response.get('Item')
+
+def get_message(message_id):
+    response = messages_table.get_item(Key={'pk_message_id': message_id})
+    return response.get('Item')
+
+def get_review(review_id):
+    response = reviews_table.get_item(Key={'pk_review_id': review_id})
+    return response.get('Item')
+
+def get_review_by_session(session_id):
+    response = reviews_table.query(
+        IndexName='SessionReviewIndex',
+        KeyConditionExpression='session_id = :sid',
+        ExpressionAttributeValues={':sid': session_id}
+    )
+    return response['Items']
+
+# New function to delete a specific session and associated messages, reviews, and feedback
+def delete_session(session_id):
+    # Retrieve associated messages
+    messages = messages_table.query(
+        IndexName='SessionMessagesIndex',
+        KeyConditionExpression='sk_session_id = :sid',
+        ExpressionAttributeValues={':sid': session_id}
+    )['Items']
+
+    # Retrieve associated reviews
+    reviews = reviews_table.query(
+        IndexName='SessionReviewIndex',
+        KeyConditionExpression='session_id = :sid',
+        ExpressionAttributeValues={':sid': session_id}
+    )['Items']
+
+    # Delete the session, messages, and reviews
+    with sessions_table.batch_writer() as batch:
+        # Delete the session
+        batch.delete_item(
+            Key={'pk_session_id': session_id}
+        )
+
+    # Delete each message associated with the session
+    with messages_table.batch_writer() as batch:
+        for message in messages:
+            batch.delete_item(
+                Key={
+                    'pk_message_id': message['pk_message_id'],
+                    'sk_session_id': session_id
+                }
+            )
+
+    # Delete each review associated with the session
+    with reviews_table.batch_writer() as batch:
+        for review in reviews:
+            batch.delete_item(
+                Key={'pk_review_id': review['pk_review_id']}
+            )
+
+    return {"status": "Session and associated items deleted", "session_id": session_id}
+
+# Function to delete all sessions under a specific user
+def delete_user_sessions(user_id):
+    # Query for all sessions under the specified user
+    sessions = sessions_table.query(
+        IndexName='UserSessionsIndex',
+        KeyConditionExpression='user_id = :uid',
+        ExpressionAttributeValues={':uid': user_id}
+    )['Items']
+
+    # Delete each session and associated messages and reviews
+    for session in sessions:
+        delete_session(session['pk_session_id'])
+
+    return {"status": "All sessions for user deleted", "user_id": user_id}

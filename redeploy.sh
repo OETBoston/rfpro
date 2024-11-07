@@ -1,5 +1,5 @@
 set -e
-export NODE_TLS_REJECT_UNAUTHORIZED=0
+# export NODE_TLS_REJECT_UNAUTHORIZED=0
 echo $"\n[INFO] Starting Redeployment Process..."
 source $PWD/.env
 printf '%.0s-' {1..100}

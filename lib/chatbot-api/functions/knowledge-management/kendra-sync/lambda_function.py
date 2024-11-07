@@ -67,30 +67,9 @@ def lambda_handler(event, context):
     # Retrieve the resource path from the event dictionary
     resource_path = event.get('rawPath', '')
     
-    # Check admin access    
-    # try:
-    #     claims = event["requestContext"]["authorizer"]["jwt"]["claims"]
-    #     roles = json.loads(claims['custom:role'])
-    #     if "Admin" in roles:                        
-    #         print("admin granted!")
-    #     else:
-    #         return {
-    #             'statusCode': 403,
-    #             'headers': {'Access-Control-Allow-Origin': '*'},
-    #             'body': json.dumps('User is not authorized to perform this action')
-    #         }
-    # except:
-    #     return {
-    #             'statusCode': 500,
-    #             'headers': {'Access-Control-Allow-Origin': '*'},
-    #             'body': json.dumps('Unable to check user role, please ensure you have Cognito configured correctly with a custom:role attribute.')
-    #         }    
-        
     # Check if the request is for syncing Kendra
     if "sync-kendra" in resource_path:
         if check_running():
-            print("1")
-
             return {
                 'statusCode': 200,
                 'headers': {'Access-Control-Allow-Origin': '*'},
@@ -99,8 +78,7 @@ def lambda_handler(event, context):
         
         
         else:
-            # Check if the request is for syncing Kendra    
-            print("2")
+            # Check if the request is for syncing Kendra
             client.start_data_source_sync_job(
                     Id=source_index,
                     IndexId=kendra_index
