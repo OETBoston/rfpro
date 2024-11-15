@@ -136,7 +136,7 @@ export default function NavigationPanel() {
           iconAlign="right"
           iconSvg={<PointerIcon />}
           variant="primary"
-          href={`/chatbot/playground/new-chat`}
+          href={`/chatbot/playground/${uuidv4()}`}
           data-alignment="right"
           className="new-chat-button"
           style={{ textAlign: "right" }}

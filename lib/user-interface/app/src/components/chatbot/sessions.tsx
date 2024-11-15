@@ -220,7 +220,9 @@ export default function Sessions(props: SessionsProps) {
               <SpaceBetween direction="horizontal" size="m">
                 <RouterButton
                   iconName="add-plus"
-                  href={`/chatbot/playground/new-chat`}
+                  href={`/chatbot/playground/${uuidv4()}`}
+                  // variant="inline-link"
+                  // onClick={() => getSessions()}
                 >
                   New session
                 </RouterButton>
