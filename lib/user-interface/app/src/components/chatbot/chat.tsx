@@ -29,7 +29,6 @@ export default function Chat(props: { sessionId?: string}) {
     []
   );
   
-
   /** Loads session history */
   useEffect(() => {
     if (!appContext) return;
