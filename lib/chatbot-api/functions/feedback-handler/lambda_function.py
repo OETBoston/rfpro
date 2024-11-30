@@ -6,16 +6,23 @@ from datetime import datetime
 from boto3.dynamodb.conditions import Key, Attr
 
 dynamodb = boto3.resource('dynamodb')
-messages_table = dynamodb.Table(os.environ.get('MESSAGES_TABLE'))
+messages_table = dynamodb.Table(os.environ.get('FEEDBACK_TABLE'))
 
 from decimal import Decimal
 
 class DecimalEncoder(json.JSONEncoder):
-  def default(self, obj):
-    if isinstance(obj, Decimal):
-      return str(obj)
-    return json.JSONEncoder.default(self, obj)
+    # Updated decimal encoder to follow encoder in the session-handler lambda function
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        return super().default(obj)
     
+def _generate_message_id():
+    # Copied message id generator from session-handler lambda function 
+    # message id is created at time of upload
+    # This parameter is necessary for the post_feedback() function
+    return f"MESSAGE-{int(datetime.now().timestamp())}-{uuid.uuid4().hex[:8]}"
+
 
 def lambda_handler(event, context):
     print(event)
@@ -36,9 +43,9 @@ def lambda_handler(event, context):
 
 def post_feedback(event):
     try:
-        feedback_data = json.loads(event['body'])
-        session_id = feedback_data['session_id']
-        message_id = feedback_data['message_id']
+        feedback_data = json.loads(event['body'])['feedbackData']
+        session_id = feedback_data['sessionId']
+        message_id = _generate_message_id()
         feedback_type = feedback_data.get('feedback_type', 'neutral')
         feedback_rank = feedback_data.get('feedback_rank', 0)
         feedback_category = feedback_data.get('feedback_category', 'general')
@@ -68,7 +75,7 @@ def post_feedback(event):
             'body': json.dumps({
                 'FeedbackID': message_id,
                 'updated_attributes': response['Attributes']
-            })
+            }, cls=DecimalEncoder) # use JSON decimal encoder to serialize decimal feedback rank
         }
 
     except Exception as e:
@@ -130,18 +137,30 @@ def download_feedback(event):
 def get_feedback(event):
     try:
         query_params = event.get('queryStringParameters', {})
-        session_id = query_params.get('session_id')
-        start_time = query_params.get('startTime') + "T00:00:00"
-        end_time = query_params.get('endTime') + "T23:59:59"
+        # session_id = query_params.get('session_id')
+        # start_time = query_params.get('startTime') + "T00:00:00"
+        # end_time = query_params.get('endTime') + "T23:59:59"
 
-        query_kwargs = {
-            'IndexName': 'SessionMessagesIndex',
-            'KeyConditionExpression': Key('sk_session_id').eq(session_id) & Key('created_at').between(start_time, end_time),
-            'FilterExpression': Attr('feedback_type').exists(),
-            'ScanIndexForward': False
-        }
+        # query_kwargs = {
+        #     'IndexName': 'SessionMessagesIndex',
+        #     'KeyConditionExpression': Key('sk_session_id').eq(session_id) & Key('created_at').between(start_time, end_time),
+        #     'FilterExpression': Attr('feedback_type').exists(),
+        #     'ScanIndexForward': False
+        # }
 
-        response = messages_table.query(**query_kwargs)
+        # response = messages_table.query(**query_kwargs)
+
+        """
+        Interpretated that this function lists all sessions with the chat bot.
+        Admins have permissions to view all user activity.
+        In this case, dynamodb.scan() is used to read all content.
+        Querying by primary key is not sufficient.
+        """
+        start_time = query_params.get('startTime')
+        end_time = query_params.get('endTime')
+        response = messages_table.scan(
+            FilterExpression=Key('created_at').between(start_time, end_time)
+        )
         items = response.get('Items', [])
 
         formatted_feedback = [
@@ -154,7 +173,7 @@ def get_feedback(event):
                 "Problem": "",
                 "Feedback": item.get('feedback_type', ''),
                 "ChatbotMessage": item.get('bot_response', ''),
-                "CreatedAt": item.get('feedback_created_at', '')
+                "CreatedAt": item.get('created_at', '')
             }
             for item in items
         ]
