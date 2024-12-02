@@ -92,9 +92,14 @@ def post_feedback(event):
         
     
 def download_feedback(event):
+    """
+    start_time and end_time already have "T00:00:00" time suffix
+    """
     data = json.loads(event['body'])
-    start_time = data.get('startTime') + "T00:00:00"
-    end_time = data.get('endTime') + "T23:59:59"
+    # start_time = data.get('startTime') + "T00:00:00"
+    # end_time = data.get('endTime') + "T23:59:59"
+    start_time = data.get('startTime')
+    end_time = data.get('endTime')
     session_id = data.get('session_id')
 
     try:
@@ -155,8 +160,8 @@ def get_feedback(event):
         # response = messages_table.query(**query_kwargs)
 
         """
-        Interpretated that this function lists all sessions with the chat bot.
-        Admins have permissions to view all user activity.
+        Interpretated that this function lists all sessions with the chat bot because the frontend UI 
+        does not allow users to filter by session ID. Admins have permissions to view all user activity.
         In this case, dynamodb.scan() is used to read all content.
         Querying by primary key is not sufficient.
         Changed filter expression and formatter to use "feedback_created_at" field instead of "created_at"
