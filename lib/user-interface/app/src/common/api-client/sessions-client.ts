@@ -131,17 +131,21 @@ export class SessionsClient {
       if (value.metadata) {
         metadata = { "Sources": JSON.parse(value.metadata) }
       }
+      /** Add message ID to ChatBotHistoryItem so that the feedback 
+       * handler Lambda function can add user feedback to message in DynamoDB.
+       * Human and AI messages have same message ID. */
       history.push({
         type: ChatBotMessageType.Human,
         content: value.user,
-        metadata: {
-        },
+        metadata: {},
+        messageId: value.messageId
       },
-        {
-          type: ChatBotMessageType.AI,
-          content: value.chatbot,
-          metadata: metadata,
-        },)
+      {
+        type: ChatBotMessageType.AI,
+        content: value.chatbot,
+        metadata: metadata,
+        messageId: value.messageId
+      },)
     })
     return history;
   }

@@ -17,6 +17,7 @@ export enum ChatBotMessageType {
 }
 
 export interface ChatBotHistoryItem {
+  messageId: string;
   type: ChatBotMessageType;
   content: string;
   metadata: Record<
@@ -31,13 +32,18 @@ export interface ChatBotHistoryItem {
   >;
 }
 
+// Renaming variables and changing types to match new feedback schema
+// feedback (1 || 0) -> feedbackType ("positive" || "negative")
+// topic -> feedbackCategory
+// problem (string) -> feedbackRank (number)
+// comment -> feedbackMessage
 export interface FeedbackData {
   sessionId: string;  
-  feedback: number;
+  feedbackType: string;
   prompt: string;
   completion: string;    
-  topic: string,
-  problem: string,
-  comment: string,
-  sources: string     
+  feedbackCategory: string;
+  feedbackRank: number;
+  feedbackMessage: string;
+  sources: string;
 }

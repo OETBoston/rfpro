@@ -29,7 +29,6 @@ export default function Chat(props: { sessionId?: string}) {
     []
   );
   
-
   /** Loads session history */
   useEffect(() => {
     if (!appContext) return;
@@ -60,6 +59,7 @@ export default function Chat(props: { sessionId?: string}) {
           ChatScrollState.skipNextHistoryUpdate = true;
           ChatScrollState.skipNextScrollEvent = true;
           
+          /** Add messageId to message history */
           setMessageHistory(
             hist
               .filter((x) => x !== null)
@@ -67,6 +67,7 @@ export default function Chat(props: { sessionId?: string}) {
                 type: x!.type as ChatBotMessageType,
                 metadata: x!.metadata!,
                 content: x!.content,
+                messageId: x!.messageId,
               }))
           );
 
@@ -86,21 +87,23 @@ export default function Chat(props: { sessionId?: string}) {
   }, [appContext, props.sessionId]);
 
   /** Adds some metadata to the user's feedback */
-  const handleFeedback = (feedbackType: 1 | 0, idx: number, message: ChatBotHistoryItem, feedbackTopic? : string, feedbackProblem? : string, feedbackMessage? : string) => {
+  const handleFeedback = (feedbackType: "positive" | "negative", idx: number, message: ChatBotHistoryItem, feedbackCategory? : string, feedbackRank? : number, feedbackMessage? : string) => {
     if (props.sessionId) {
       console.log("submitting feedback...")
       
       const prompt = messageHistory[idx - 1].content
       const completion = message.content;
+      const messageCompletionId = message.messageId;
       
       const feedbackData = {
         sessionId: props.sessionId, 
-        feedback: feedbackType,
+        messageId: messageCompletionId,
+        feedbackType: feedbackType,
         prompt: prompt,
         completion: completion,
-        topic: feedbackTopic,
-        problem: feedbackProblem,
-        comment: feedbackMessage,
+        feedbackCategory: feedbackCategory,
+        feedbackRank: feedbackRank,
+        feedbackMessage: feedbackMessage,
         sources: JSON.stringify(message.metadata.Sources)
       };
       addUserFeedback(feedbackData);
@@ -131,8 +134,8 @@ export default function Chat(props: { sessionId?: string}) {
           <ChatMessage
             key={idx}
             message={message}            
-            onThumbsUp={() => handleFeedback(1,idx, message)}
-            onThumbsDown={(feedbackTopic : string, feedbackType : string, feedbackMessage: string) => handleFeedback(0,idx, message,feedbackTopic, feedbackType, feedbackMessage)}                        
+            onThumbsUp={() => handleFeedback("positive", idx, message)}
+            onThumbsDown={(feedbackCategory : string, feedbackRank : number, feedbackMessage: string) => handleFeedback("negative", idx, message, feedbackCategory, feedbackRank, feedbackMessage)}                        
           />
         ))}
       </SpaceBetween>

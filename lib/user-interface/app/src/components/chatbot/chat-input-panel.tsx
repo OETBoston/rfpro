@@ -160,12 +160,14 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           type: ChatBotMessageType.Human,
           content: messageToSend,
           metadata: {            
-          },          
+          },
+          messageId: "",
         },
         {
           type: ChatBotMessageType.AI,          
           content: receivedData,
           metadata: {},
+          messageId: "",
         },
       ];
       props.setMessageHistory(messageHistoryRef.current);
@@ -196,6 +198,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           type: ChatBotMessageType.AI,          
           content: `Sorry, I had a bit of trouble processing that question, please type it again in the search bar. I'll try my best to help you with your questions.`,
           metadata: {},
+          messageId: "",
         })
       }},60000)
 
@@ -266,14 +269,14 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           {
             type: ChatBotMessageType.Human,
             content: messageToSend,
-            metadata: {
-              
-            },            
+            metadata: {},
+            messageId: "",
           },
           {
             type: ChatBotMessageType.AI,            
             content: receivedData,
             metadata: sources,
+            messageId: "",
           },
         ];        
         props.setMessageHistory(messageHistoryRef.current);        
