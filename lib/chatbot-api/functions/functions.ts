@@ -10,13 +10,14 @@ import * as kendra from 'aws-cdk-lib/aws-kendra';
 import * as s3 from "aws-cdk-lib/aws-s3";
 
 interface LambdaFunctionStackProps {  
-  readonly wsApiEndpoint : string;  
-  readonly sessionTable : Table;
+  readonly wsApiEndpoint : string;
   readonly kendraIndex : kendra.CfnIndex;
   readonly kendraSource : kendra.CfnDataSource;
-  readonly feedbackTable : Table;
   readonly feedbackBucket : s3.Bucket;
   readonly knowledgeBucket : s3.Bucket;
+  readonly sessionsTable: Table,
+  readonly messagesTable: Table,
+  readonly reviewsTable: Table
 }
 
 export class LambdaFunctionStack extends cdk.Stack {  
@@ -36,7 +37,9 @@ export class LambdaFunctionStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, 'session-handler')), // Points to the lambda directory
       handler: 'lambda_function.lambda_handler', // Points to the 'hello' file in the lambda directory
       environment: {
-        "DDB_TABLE_NAME" : props.sessionTable.tableName
+        "SESSION_TABLE" : props.sessionsTable.tableName,
+        "MESSAGES_TABLE": props.messagesTable.tableName,
+        "REVIEW_TABLE": props.reviewsTable.tableName
       },
       timeout: cdk.Duration.seconds(30)
     });
@@ -49,9 +52,17 @@ export class LambdaFunctionStack extends cdk.Stack {
         'dynamodb:UpdateItem',
         'dynamodb:DeleteItem',
         'dynamodb:Query',
-        'dynamodb:Scan'
+        'dynamodb:Scan',
+        'dynamodb:BatchWriteItem'
       ],
-      resources: [props.sessionTable.tableArn, props.sessionTable.tableArn + "/index/*"]
+      resources: [
+        props.sessionsTable.tableArn, 
+        props.sessionsTable.tableArn + "/index/*",
+        props.messagesTable.tableArn, 
+        props.messagesTable.tableArn + "/index/*",
+        props.reviewsTable.tableArn, 
+        props.reviewsTable.tableArn + "/index/*",
+      ]
     }));
 
     this.sessionFunction = sessionAPIHandlerFunction;
@@ -116,7 +127,7 @@ export class LambdaFunctionStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, 'feedback-handler')), // Points to the lambda directory
       handler: 'lambda_function.lambda_handler', // Points to the 'hello' file in the lambda directory
       environment: {
-        "FEEDBACK_TABLE" : props.feedbackTable.tableName,
+        "FEEDBACK_TABLE" : props.messagesTable.tableName,
         "FEEDBACK_S3_DOWNLOAD" : props.feedbackBucket.bucketName
       },
       timeout: cdk.Duration.seconds(30)
@@ -132,7 +143,7 @@ export class LambdaFunctionStack extends cdk.Stack {
         'dynamodb:Query',
         'dynamodb:Scan'
       ],
-      resources: [props.feedbackTable.tableArn, props.feedbackTable.tableArn + "/index/*"]
+      resources: [props.messagesTable.tableArn, props.messagesTable.tableArn + "/index/*"]
     }));
 
     feedbackAPIHandlerFunction.addToRolePolicy(new iam.PolicyStatement({
