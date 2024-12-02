@@ -114,6 +114,10 @@ def add_message_to_existing_session(session_id, new_chat_entry):
         }
 
 def get_session(session_id, user_id):
+    """
+    Add message_id to chat_history JSON so that it can be parsed by the frontend 
+    for the get_feedback() function inside feedback handler Lambda function
+    """
     try:
         session_response = sessions_table.get_item(Key={'pk_session_id': session_id})
         if 'Item' not in session_response:
@@ -138,7 +142,8 @@ def get_session(session_id, user_id):
             {
                 "user": message.get("user_prompt", ""),
                 "chatbot": message.get("bot_response", ""),
-                "metadata": json.dumps(message.get("sources", []))
+                "metadata": json.dumps(message.get("sources", [])),
+                "messageId": message.get("pk_message_id", "")
             }
             for message in messages
         ]

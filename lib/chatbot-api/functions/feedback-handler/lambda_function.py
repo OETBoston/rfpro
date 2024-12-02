@@ -11,17 +11,14 @@ messages_table = dynamodb.Table(os.environ.get('FEEDBACK_TABLE'))
 from decimal import Decimal
 
 class DecimalEncoder(json.JSONEncoder):
-    # Updated decimal encoder to follow encoder in the session-handler lambda function
+    """
+    Updated decimal encoder to follow encoder in the session-handler lambda function
+    """
     def default(self, obj):
         if isinstance(obj, Decimal):
             return str(obj)
         return super().default(obj)
     
-def _generate_message_id():
-    # Copied message id generator from session-handler lambda function 
-    # message id is created at time of upload
-    # This parameter is necessary for the post_feedback() function
-    return f"MESSAGE-{int(datetime.now().timestamp())}-{uuid.uuid4().hex[:8]}"
 
 
 def lambda_handler(event, context):
@@ -43,13 +40,20 @@ def lambda_handler(event, context):
 
 def post_feedback(event):
     try:
+        """
+        feedback_data needs to access one layer deeper in JSON
+        feedback_type is the "feedbackType" field in input feedbackData JSON ("positive" or "negative" feedback)
+        feedback_rank is the "feedbackRank" field in input feedbackData JSON (satisfaction rating). What is default value for thumbs up?
+        feedback_category is the "feedbackCategory" field in input feedbackData JSON (category of feedback)
+        feedback_message is the "feedbackMessage" field in input feedbackData JSON (additional details from user feedback)
+        """
         feedback_data = json.loads(event['body'])['feedbackData']
         session_id = feedback_data['sessionId']
-        message_id = _generate_message_id()
-        feedback_type = feedback_data.get('feedback_type', 'neutral')
-        feedback_rank = feedback_data.get('feedback_rank', 0)
-        feedback_category = feedback_data.get('feedback_category', 'general')
-        feedback_message = feedback_data.get('feedback_message', '')
+        message_id = feedback_data['messageId']
+        feedback_type = feedback_data.get('feedbackType', 'neutral')
+        feedback_rank = feedback_data.get('feedbackRank', 0)
+        feedback_category = feedback_data.get('feedbackCategory', 'general')
+        feedback_message = feedback_data.get('feedbackMessage', '')
         feedback_created_at = datetime.utcnow().isoformat()
 
         response = messages_table.update_item(
@@ -155,11 +159,13 @@ def get_feedback(event):
         Admins have permissions to view all user activity.
         In this case, dynamodb.scan() is used to read all content.
         Querying by primary key is not sufficient.
+        Changed filter expression and formatter to use "feedback_created_at" field instead of "created_at"
+        time attribute already has "T00:00:00" appended
         """
         start_time = query_params.get('startTime')
         end_time = query_params.get('endTime')
         response = messages_table.scan(
-            FilterExpression=Key('created_at').between(start_time, end_time)
+            FilterExpression=Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
         )
         items = response.get('Items', [])
 
@@ -168,12 +174,12 @@ def get_feedback(event):
                 "FeedbackID": item['pk_message_id'],
                 "SessionID": item['sk_session_id'],
                 "UserPrompt": item.get('user_prompt', ''),
-                "FeedbackComment": item.get('feedback_message', ''),
+                "FeedbackComments": item.get('feedback_message', ''),
                 "Topic": item.get('feedback_category', ''),
-                "Problem": "",
+                "Problem": item.get('feedback_rank', ''),
                 "Feedback": item.get('feedback_type', ''),
                 "ChatbotMessage": item.get('bot_response', ''),
-                "CreatedAt": item.get('created_at', '')
+                "CreatedAt": item.get('feedback_created_at', '')
             }
             for item in items
         ]
@@ -181,7 +187,9 @@ def get_feedback(event):
         return {
             'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 200,
-            'body': json.dumps({'Items': formatted_feedback})
+            'body': json.dumps({
+                'Items': formatted_feedback
+            }, cls=DecimalEncoder)
         }
 
     except Exception as e:

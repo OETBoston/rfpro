@@ -32,10 +32,13 @@ import { useNotifications } from "../notif-manager";
 import { Utils } from "../../common/utils";
 import {feedbackCategories, feedbackTypes} from '../../common/constants'
 
+// Renaming props to match new feedback schema:
+// feedbackTopic -> feedbackCategory
+// feedbackType -> feedbackRank
 export interface ChatMessageProps {
   message: ChatBotHistoryItem;  
   onThumbsUp: () => void;
-  onThumbsDown: (feedbackTopic : string, feedbackType : string, feedbackMessage: string) => void;  
+  onThumbsDown: (feedbackCategory : string, feedbackRank : number, feedbackMessage: string) => void;  
 }
 
 export default function ChatMessage(props: ChatMessageProps) {
@@ -62,7 +65,7 @@ export default function ChatMessage(props: ChatMessageProps) {
     }
     // Handle feedback submission
     if (selectedIcon === 0) {
-      props.onThumbsDown(selectedIssue || "", "rating", feedbackMessage.trim());
+      props.onThumbsDown(selectedIssue || "", selectedRankValue, feedbackMessage.trim());
     } else {
       props.onThumbsUp();
     }
@@ -146,7 +149,13 @@ export default function ChatMessage(props: ChatMessageProps) {
 
           {/* Submit Button */}
           <Box textAlign="center">
-            <Button variant="primary" onClick={handleSubmit}>
+            <Button variant="primary" onClick={() => {
+              // Submit negative feedback when user presses submit button
+              // add notification
+              handleSubmit();
+              const id = addNotification("success","Thank you for your valuable feedback!");
+              Utils.delay(3000).then(() => removeNotification(id));    
+            }}>
               Submit
             </Button>
           </Box>
@@ -267,8 +276,9 @@ export default function ChatMessage(props: ChatMessageProps) {
                 }
                 variant="icon"
                 onClick={() => {
-                  // props.onThumbsDown();
-                  // setSelectedIcon(0);
+                  // props.onThumbsDown(selectedIssue || "", selectedRankValue, feedbackMessage.trim());
+                  // User clicked on thumbs down button, set state to thumbs down button
+                  setSelectedIcon(0);
                   setModalVisible(true);
                 }}
               />
