@@ -76,14 +76,20 @@ export default function ChatMessage(props: ChatMessageProps) {
     setFeedbackMessage("");
   };
 
-  const feedbackOptions = [
-    { value: "error-messages", label: "Error Messages" },
-    { value: "not-clear", label: "Not Clear" },
-    { value: "poorly-formatted", label: "Poorly Formatted" },
-    { value: "inaccurate", label: "Inaccurate" },
-    { value: "not-relevant", label: "Not Relevant to My Question" },
-    { value: "other", label: "Other" },
-  ];
+  // const feedbackOptions = [
+  //   { value: "error-messages", label: "Error Messages" },
+  //   { value: "not-clear", label: "Not Clear" },
+  //   { value: "poorly-formatted", label: "Poorly Formatted" },
+  //   { value: "inaccurate", label: "Inaccurate" },
+  //   { value: "not-relevant", label: "Not Relevant to My Question" },
+  //   { value: "other", label: "Other" },
+  // ];
+
+  // const [selectedRadioValue, setSelectedRadioValue] = useState(null);
+
+  const handleRadioChange = (event) => {
+    setSelectedIssue(event.target.value);
+  };
 
   const handleRankButtonClick = (value) => {
     setSelectedRankValue(value);
@@ -109,32 +115,59 @@ export default function ChatMessage(props: ChatMessageProps) {
           {/* Thumbs-Down Specific Feedback */}
           {selectedIcon === 0 && (
             <FormField label="BIDBOT'S ANSWER WAS..." stretch>
-              <RadioGroup
+              {/* <RadioGroup
                 value={selectedIssue}
                 onChange={({ detail }) => setSelectedIssue(detail.value)}
                 items={feedbackOptions}
-              />
+              /> */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 2fr)' }}>
+                <label>
+                  <input type="radio" name="category" value="error-messages" checked={selectedIssue === 'error-messages'} onChange={handleRadioChange} />
+                  Error Messages
+                </label>
+                <label>
+                  <input type="radio" name="category" value="not-clear" checked={selectedIssue === 'not-clear'} onChange={handleRadioChange} />
+                  Not Clear
+                </label>
+                <label>
+                  <input type="radio" name="category" value="poorly-formatted" checked={selectedIssue === 'poorly-formatted'} onChange={handleRadioChange} />
+                  Poorly Formatted
+                </label>
+                <label>
+                  <input type="radio" name="category" value="inaccurate" checked={selectedIssue === 'inaccurate'} onChange={handleRadioChange} />
+                  Inaccurate
+                </label>
+                <label>
+                  <input type="radio" name="category" value="not-relevant" checked={selectedIssue === 'not-relevant'} onChange={handleRadioChange} />
+                  Not Relevant to My Question
+                </label>
+                <label>
+                  <input type="radio" name="category" value="other" checked={selectedIssue === 'other'} onChange={handleRadioChange} />
+                  Other
+                </label>
+              </div>
+
             </FormField>
           )}
 
           {/* Helpfulness Rating */}
           <FormField label="HOW HELPFUL WAS BIDBOT OVERALL?" stretch>
             <SpaceBetween size="xs" direction="vertical">
-              <SpaceBetween direction="horizontal" size="xs">
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 {[1, 2, 3, 4, 5].map((value) => (
-                  <Button
+                  <div><Button
                     key={value}
                     variant={selectedRankValue === value ? "primary" : "normal"}
                     onClick={() => setSelectedRankValue(value)}
                   >
                     {value}
-                  </Button>
+                  </Button></div>
                 ))}
-              </SpaceBetween>
-              <SpaceBetween direction="horizontal" size="l">
-                <Box>Not Helpful</Box>
-                <Box>Very Helpful</Box>
-              </SpaceBetween>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div><Box>Not Helpful</Box></div>
+                <div><Box>Very Helpful</Box></div>
+              </div>
             </SpaceBetween>
           </FormField>
 
