@@ -41,10 +41,11 @@ export class ChatBotApi extends Construct {
     const lambdaFunctions = new LambdaFunctionStack(this, "LambdaFunctions",
       {
         wsApiEndpoint: websocketBackend.wsAPIStage.url,
-        sessionTable: tables.historyTable,
+        sessionsTable: tables.sessionsTable,
+        messagesTable: tables.messagesTable,
+        reviewsTable: tables.reviewsTable,
         kendraIndex: kendra.kendraIndex,
         kendraSource: kendra.kendraSource,
-        feedbackTable: tables.feedbackTable,
         feedbackBucket: buckets.feedbackBucket,
         knowledgeBucket: buckets.kendraBucket,
       }

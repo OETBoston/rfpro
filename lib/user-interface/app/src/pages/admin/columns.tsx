@@ -26,29 +26,35 @@ const FILES_COLUMN_DEFINITIONS = [
 
 const FEEDBACK_COLUMN_DEFINITIONS = [
   {
-    id: "problem",
-    header: "Problem",
-    cell: (item) => item.Problem,
-    isRowHeader: true,
-  },
-  {
-    id: "topic",
-    header: "Topic",
-    cell: (item) => item.Topic,
-    isRowHeader: true,
-  },
-  {
     id: "createdAt",
-    header: "Submission date",
+    header: "DATE",
     cell: (item) =>
       DateTime.fromISO(new Date(item.CreatedAt).toISOString()).toLocaleString(
         DateTime.DATETIME_SHORT
       ),
   },
   {
-    id: "prompt",
-    header: "User Prompt",
-    cell: (item) => item.UserPrompt,
+    id: "feedbackType",
+    header: "SENTIMENT",
+    cell: (item) => item.FeedbackType,
+    isRowHeader: true,
+  },
+  {
+    id: "feedbackCategory",
+    header: "CATEGORY",
+    cell: (item) => item.FeedbackCategory,
+    isRowHeader: true,
+  },
+  {
+    id: "feedbackRank",
+    header: "RATING",
+    cell: (item) => item.FeedbackRank,
+    isRowHeader: true,
+  },
+  {
+    id: "feedbackComments",
+    header: "USER COMMENT",
+    cell: (item) => item.FeedbackComments,
     isRowHeader: true
   },
 
