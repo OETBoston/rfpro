@@ -134,7 +134,7 @@ export default function Chat(props: { sessionId?: string}) {
           <ChatMessage
             key={idx}
             message={message}            
-            onThumbsUp={() => handleFeedback("positive", idx, message)}
+            onThumbsUp={(feedbackCategory : string, feedbackRank : number, feedbackMessage: string) => handleFeedback("positive", idx, message, feedbackCategory, feedbackRank, feedbackMessage)}
             onThumbsDown={(feedbackCategory : string, feedbackRank : number, feedbackMessage: string) => handleFeedback("negative", idx, message, feedbackCategory, feedbackRank, feedbackMessage)}                        
           />
         ))}

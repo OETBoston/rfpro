@@ -37,7 +37,7 @@ import {feedbackCategories, feedbackTypes} from '../../common/constants'
 // feedbackType -> feedbackRank
 export interface ChatMessageProps {
   message: ChatBotHistoryItem;  
-  onThumbsUp: () => void;
+  onThumbsUp: (feedbackCategory : string, feedbackRank : number, feedbackMessage: string) => void;
   onThumbsDown: (feedbackCategory : string, feedbackRank : number, feedbackMessage: string) => void;  
 }
 
@@ -67,7 +67,7 @@ export default function ChatMessage(props: ChatMessageProps) {
     if (selectedIcon === 0) {
       props.onThumbsDown(selectedIssue || "", selectedRankValue, feedbackMessage.trim());
     } else {
-      props.onThumbsUp();
+      props.onThumbsUp("", selectedRankValue, feedbackMessage.trim());
     }
     // Reset modal state
     setModalVisible(false);
@@ -107,7 +107,10 @@ export default function ChatMessage(props: ChatMessageProps) {
   return (
     <div>
       <Modal
-        onDismiss={() => setModalVisible(false)}
+        onDismiss={() => {
+          setModalVisible(false);
+          setSelectedIcon(null);
+        }}
         visible={modalVisible}
         header="PROVIDE FEEDBACK"
       >
@@ -122,27 +125,27 @@ export default function ChatMessage(props: ChatMessageProps) {
               /> */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 2fr)' }}>
                 <label>
-                  <input type="radio" name="category" value="error-messages" checked={selectedIssue === 'error-messages'} onChange={handleRadioChange} />
+                  <input type="radio" name="category" value="Error Messages" checked={selectedIssue === 'Error Messages'} onChange={handleRadioChange} />
                   Error Messages
                 </label>
                 <label>
-                  <input type="radio" name="category" value="not-clear" checked={selectedIssue === 'not-clear'} onChange={handleRadioChange} />
+                  <input type="radio" name="category" value="Not Clear" checked={selectedIssue === 'Not Clear'} onChange={handleRadioChange} />
                   Not Clear
                 </label>
                 <label>
-                  <input type="radio" name="category" value="poorly-formatted" checked={selectedIssue === 'poorly-formatted'} onChange={handleRadioChange} />
+                  <input type="radio" name="category" value="Poorly Formatted" checked={selectedIssue === 'Poorly Formatted'} onChange={handleRadioChange} />
                   Poorly Formatted
                 </label>
                 <label>
-                  <input type="radio" name="category" value="inaccurate" checked={selectedIssue === 'inaccurate'} onChange={handleRadioChange} />
+                  <input type="radio" name="category" value="Inaccurate" checked={selectedIssue === 'Inaccurate'} onChange={handleRadioChange} />
                   Inaccurate
                 </label>
                 <label>
-                  <input type="radio" name="category" value="not-relevant" checked={selectedIssue === 'not-relevant'} onChange={handleRadioChange} />
+                  <input type="radio" name="category" value="Not Relevant to My Question" checked={selectedIssue === 'Not Relevant to My Question'} onChange={handleRadioChange} />
                   Not Relevant to My Question
                 </label>
                 <label>
-                  <input type="radio" name="category" value="other" checked={selectedIssue === 'other'} onChange={handleRadioChange} />
+                  <input type="radio" name="category" value="Other" checked={selectedIssue === 'Other'} onChange={handleRadioChange} />
                   Other
                 </label>
               </div>
@@ -295,10 +298,11 @@ export default function ChatMessage(props: ChatMessageProps) {
                 variant="icon"
                 iconName={selectedIcon === 1 ? "thumbs-up-filled" : "thumbs-up"}
                 onClick={() => {
-                  props.onThumbsUp();
-                  const id = addNotification("success","Thank you for your valuable feedback!")
-                  Utils.delay(3000).then(() => removeNotification(id));
+                  // props.onThumbsUp();
+                  // const id = addNotification("success","Thank you for your valuable feedback!")
+                  // Utils.delay(3000).then(() => removeNotification(id));
                   setSelectedIcon(1);
+                  setModalVisible(true);
                 }}
               />
             )}

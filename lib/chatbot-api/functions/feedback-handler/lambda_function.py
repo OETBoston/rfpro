@@ -166,6 +166,7 @@ def get_feedback(event):
         Querying by primary key is not sufficient.
         Changed filter expression and formatter to use "feedback_created_at" field instead of "created_at"
         time attribute already has "T00:00:00" appended
+        Updated labels in formatted_feedback
         """
         start_time = query_params.get('startTime')
         end_time = query_params.get('endTime')
@@ -180,9 +181,9 @@ def get_feedback(event):
                 "SessionID": item['sk_session_id'],
                 "UserPrompt": item.get('user_prompt', ''),
                 "FeedbackComments": item.get('feedback_message', ''),
-                "Topic": item.get('feedback_category', ''),
-                "Problem": item.get('feedback_rank', ''),
-                "Feedback": item.get('feedback_type', ''),
+                "FeedbackCategory": item.get('feedback_category', ''),
+                "FeedbackRank": item.get('feedback_rank', ''),
+                "FeedbackType": item.get('feedback_type', ''),
                 "ChatbotMessage": item.get('bot_response', ''),
                 "CreatedAt": item.get('feedback_created_at', '')
             }
