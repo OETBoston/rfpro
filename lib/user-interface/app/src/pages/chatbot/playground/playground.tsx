@@ -16,11 +16,15 @@ export default function Playground() {
           </p>
           <h3>When to Use BidBot</h3>
           <p>
-            <b>Procurement Questions:</b> Ask BidBot about procurement rules, options, best practices, or how to get started with a procurement process. <br>
-            <i>Example: "How should I buy cups for an event?"</i><br>
-            <b>Writing Solicitations:</b> Use BidBot to draft RFPs, RFQs, WQCs, and other solicitation documents tailored to your needs. <br>
-            <i>Example: "Write me an RFP for a tree-cutting service."</i><br>
+          <b>Procurement Questions:</b> Ask BidBot about procurement rules, options, best practices, or how to get started with a procurement process. 
           </p>
+          <i>Example: "How should I buy cups for an event?"</i>
+          <p>
+          <b>Writing Solicitations:</b> Use BidBot to draft RFPs, RFQs, WQCs, and other solicitation documents tailored to your needs. 
+          </p>
+          <i>Example: "Write me an RFP for a tree-cutting service."</i>
+
+
           <h3>When Not to Use BidBot</h3>
           <p>
           <b>Evaluation of Proposals:</b> BidBot is not designed to evaluate vendor proposals or assist in making selection decisions. Use your team's established evaluation criteria and processes instead of BidBot.
@@ -62,7 +66,7 @@ export default function Playground() {
           </p>
           <p>
           <b>Signing Out:</b> If you’d like to sign out, click the <b>person icon</b> located above the “i” button in the top right corner.
-          </p><br>
+          </p>
           
           <p>If you have any questions or feedback about BidBot, please leave feedback in the tool or reach out to Maia Materman (maia.materman@boston.gov). Happy Procuring!</p>
 
@@ -70,11 +74,9 @@ export default function Playground() {
       }
       toolsWidth={300}       
       content={
-       <div>
-      {/* <Chat sessionId={sessionId} /> */}
-      
-      <Chat sessionId={sessionId} />
-      </div>
+      	<div>
+        	<Chat sessionId={sessionId} />
+      	</div>
      }
     />    
   );

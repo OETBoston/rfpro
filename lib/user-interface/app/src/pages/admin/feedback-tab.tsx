@@ -304,7 +304,7 @@ export default function FeedbackTab(props: FeedbackTabProps) {
                   <Button
                     variant="primary"
                     onClick={() => {
-                      apiClient.userFeedback.downloadFeedback(selectedOption.value, value.startDate, value.endDate);
+                      apiClient.userFeedback.downloadFeedback(selectedOption.value, value.startDate+"T00:00:00", value.endDate+"T23:59:59");
                       const id = addNotification("success", "Your files have been downloaded.")
                       Utils.delay(3000).then(() => removeNotification(id));
                     }}

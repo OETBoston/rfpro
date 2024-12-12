@@ -5,46 +5,32 @@ import os
 from datetime import datetime
 from boto3.dynamodb.conditions import Key, Attr
 
-# Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ.get('FEEDBACK_TABLE'))
+messages_table = dynamodb.Table(os.environ.get('FEEDBACK_TABLE'))
 
 from decimal import Decimal
 
 class DecimalEncoder(json.JSONEncoder):
-  def default(self, obj):
-    if isinstance(obj, Decimal):
-      return str(obj)
-    return json.JSONEncoder.default(self, obj)
+    """
+    Updated decimal encoder to follow encoder in the session-handler lambda function
+    """
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        return super().default(obj)
     
 
+
 def lambda_handler(event, context):
-    # Determine the type of HTTP method
-    # admin = False
-    # try:
-    #     claims = event["requestContext"]["authorizer"]["jwt"]["claims"]
-    #     roles = json.loads(claims['custom:role'])
-    #     if "Admin" in roles:                        
-    #         print("admin granted!")
-    #         admin = True
-    #     else:
-    #         print("Caught error: attempted unauthorized admin access")
-    #         admin = False
-    # except:
-    #     print("Caught error: admin access and user roles are not present")
-    #     return {
-    #             'statusCode': 500,
-    #             'headers': {'Access-Control-Allow-Origin': '*'},
-    #             'body': json.dumps('Unable to check user role, please ensure you have Cognito configured correctly with a custom:role attribute.')
-    #         }
+    print(event)
     http_method = event.get('routeKey')
     if 'POST' in http_method:
-        if event.get('rawPath') == '/user-feedback/download-feedback':# and admin:
+        if event.get('rawPath') == '/user-feedback/download-feedback':
             return download_feedback(event)
         return post_feedback(event)
-    elif 'GET' in http_method:# and admin:
+    elif 'GET' in http_method:
         return get_feedback(event)
-    elif 'DELETE' in http_method:# and admin:
+    elif 'DELETE' in http_method:
         return delete_feedback(event)
     else:
         return {
@@ -54,211 +40,198 @@ def lambda_handler(event, context):
 
 def post_feedback(event):
     try:
-        # Load JSON data from the event body
-        feedback_data = json.loads(event['body'])
-        # Generate a unique feedback ID and current timestamp
-        feedback_id = str(uuid.uuid4())
-        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-        # Prepare the item to store in DynamoDB
-        feedback_data = feedback_data['feedbackData']
-        item = {
-            'FeedbackID': feedback_id,
-            'SessionID': feedback_data['sessionId'],
-            'UserPrompt': feedback_data['prompt'],
-            'FeedbackComments': feedback_data.get('comment',''),
-            'Topic': feedback_data.get('topic','N/A (Good Response)'),
-            'Problem': feedback_data.get("problem",''),
-            'Feedback': feedback_data["feedback"],
-            'ChatbotMessage': feedback_data['completion'],
-            'Sources' : feedback_data['sources'],
-            'CreatedAt': timestamp,
-            'Any' : "YES"
-        }
-        # Put the item into the DynamoDB table
-        table.put_item(Item=item)
-        if feedback_data["feedback"] == 0:
-            print("Negative feedback placed")
-        return {
-            'headers' : {
-                'Access-Control-Allow-Origin' : "*"
+        """
+        feedback_data needs to access one layer deeper in JSON
+        feedback_type is the "feedbackType" field in input feedbackData JSON ("positive" or "negative" feedback)
+        feedback_rank is the "feedbackRank" field in input feedbackData JSON (satisfaction rating). What is default value for thumbs up?
+        feedback_category is the "feedbackCategory" field in input feedbackData JSON (category of feedback)
+        feedback_message is the "feedbackMessage" field in input feedbackData JSON (additional details from user feedback)
+        """
+        feedback_data = json.loads(event['body'])['feedbackData']
+        session_id = feedback_data['sessionId']
+        message_id = feedback_data['messageId']
+        feedback_type = feedback_data.get('feedbackType', 'neutral')
+        feedback_rank = feedback_data.get('feedbackRank', 0)
+        feedback_category = feedback_data.get('feedbackCategory', 'general')
+        feedback_message = feedback_data.get('feedbackMessage', '')
+        feedback_created_at = datetime.utcnow().isoformat()
+
+        response = messages_table.update_item(
+            Key={
+                'pk_message_id': message_id,
+                'sk_session_id': session_id
             },
+            UpdateExpression="SET feedback_type = :type, feedback_rank = :rank, feedback_category = :category, \
+                              feedback_message = :message, feedback_created_at = :created_at",
+            ExpressionAttributeValues={
+                ':type': feedback_type,
+                ':rank': Decimal(feedback_rank),
+                ':category': feedback_category,
+                ':message': feedback_message,
+                ':created_at': feedback_created_at
+            },
+            ReturnValues="UPDATED_NEW"
+        )
+
+        return {
+            'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 200,
-            'body': json.dumps({'FeedbackID': feedback_id})
+            'body': json.dumps({
+                'FeedbackID': message_id,
+                'updated_attributes': response['Attributes']
+            }, cls=DecimalEncoder) # use JSON decimal encoder to serialize decimal feedback rank
         }
+
     except Exception as e:
         print(e)
-        print("Caught error: DynamoDB error - could not add feedback")
         return {
-            'headers' : {
-                'Access-Control-Allow-Origin' : "*"
-            },
+            'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 500,
-            'body': json.dumps('Failed to store feedback: ' + str(e))
+            'body': json.dumps({'error': f'Failed to submit feedback: {str(e)}'})
         }
         
     
 def download_feedback(event):
-
-    # load parameters
+    """
+    start_time and end_time already have "T00:00:00" time suffix
+    """
     data = json.loads(event['body'])
+    # start_time = data.get('startTime') + "T00:00:00"
+    # end_time = data.get('endTime') + "T23:59:59"
     start_time = data.get('startTime')
     end_time = data.get('endTime')
-    topic = data.get('topic')
-        
-    response = None
-
-    # if topic is any, use the appropriate index
-    if not topic or topic=="any":                
-        query_kwargs = {
-            'IndexName': 'AnyIndex',
-            'KeyConditionExpression': Key('Any').eq("YES") & Key('CreatedAt').between(start_time, end_time)
-        }
-    else:
-        query_kwargs = {
-            'KeyConditionExpression': Key('CreatedAt').between(start_time, end_time) & Key('Topic').eq(topic),            
-        }   
+    session_id = data.get('session_id')
 
     try:
-        response = table.query(**query_kwargs)
-    except Exception as e:
-        print("Caught error: DynamoDB error - could not load feedback for download")
-        return {
-            'headers': {
-                'Access-Control-Allow-Origin': "*"
-            },
-            'statusCode': 500,
-            'body': json.dumps('Failed to retrieve feedback for download: ' + str(e))
+        query_kwargs = {
+            'IndexName': 'SessionMessagesIndex',
+            'KeyConditionExpression': Key('sk_session_id').eq(session_id) & Key('created_at').between(start_time, end_time),
+            'FilterExpression': Attr('feedback_type').exists(),
+            'ScanIndexForward': False
         }
-    
-    
-    def clean_csv(field):
-        print("working")
-        field = str(field).replace('"', '""')
-        field = field.replace('\n','').replace(',', '')
-        return f'{field}'
-    
-    csv_content = "FeedbackID, SessionID, UserPrompt, FeedbackComment, Topic, Problem, Feedback, ChatbotMessage, CreatedAt\n"
-    
-    for item in response['Items']:
-        csv_content += f"{clean_csv(item['FeedbackID'])}, {clean_csv(item['SessionID'])}, {clean_csv(item['UserPrompt'])}, {clean_csv(item['FeedbackComments'])}, {clean_csv(item['Topic'])}, {clean_csv(item['Problem'])}, {clean_csv(item['Feedback'])}, {clean_csv(item['ChatbotMessage'])}, {clean_csv(item['CreatedAt'])}\n"
-        print(csv_content)
-    
-    s3 = boto3.client('s3')
-    S3_DOWNLOAD_BUCKET = os.environ["FEEDBACK_S3_DOWNLOAD"]
+        response = messages_table.query(**query_kwargs)
+        items = response.get('Items', [])
 
-    try:
+        csv_content = "FeedbackID, SessionID, UserPrompt, FeedbackComment, Topic, Problem, Feedback, ChatbotMessage, CreatedAt\n"
+        for item in items:
+            csv_content += f"{item['pk_message_id']},{item['sk_session_id']},{item.get('user_prompt', '')},{item.get('feedback_message', '').replace(',', '')},{item.get('feedback_category', '')},, \
+                            {item.get('feedback_type', '')},{item.get('bot_response', '').replace(',', '')},{item.get('feedback_created_at', '')}\n"
+
+        s3 = boto3.client('s3')
+        S3_DOWNLOAD_BUCKET = os.environ["FEEDBACK_S3_DOWNLOAD"]
         file_name = f"feedback-{start_time}-{end_time}.csv"
         s3.put_object(Bucket=S3_DOWNLOAD_BUCKET, Key=file_name, Body=csv_content)
-        presigned_url = s3.generate_presigned_url('get_object', Params={'Bucket': S3_DOWNLOAD_BUCKET, 'Key': file_name}, ExpiresIn=3600)
+
+        presigned_url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': S3_DOWNLOAD_BUCKET, 'Key': file_name},
+            ExpiresIn=3600
+        )
+
+        return {
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'statusCode': 200,
+            'body': json.dumps({'download_url': presigned_url})
+        }
 
     except Exception as e:
-        print("Caught error: S3 error - could not generate download link")
+        print(e)
         return {
-            'headers': {
-                'Access-Control-Allow-Origin': "*"
-            },
+            'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 500,
-            'body': json.dumps('Failed to retrieve feedback for download: ' + str(e))
+            'body': json.dumps({'error': f'Failed to retrieve feedback for download: {str(e)}'})
         }
-    return {
-        'headers': {
-                'Access-Control-Allow-Origin': "*"
-            },
-        'statusCode': 200,
-        'body': json.dumps({'download_url': presigned_url})
-    }
         
 
 def get_feedback(event):
     try:
-        # Extract query parameters
         query_params = event.get('queryStringParameters', {})
+        # session_id = query_params.get('session_id')
+        # start_time = query_params.get('startTime') + "T00:00:00"
+        # end_time = query_params.get('endTime') + "T23:59:59"
+
+        # query_kwargs = {
+        #     'IndexName': 'SessionMessagesIndex',
+        #     'KeyConditionExpression': Key('sk_session_id').eq(session_id) & Key('created_at').between(start_time, end_time),
+        #     'FilterExpression': Attr('feedback_type').exists(),
+        #     'ScanIndexForward': False
+        # }
+
+        # response = messages_table.query(**query_kwargs)
+
+        """
+        Interpretated that this function lists all sessions with the chat bot because the frontend UI 
+        does not allow users to filter by session ID. Admins have permissions to view all user activity.
+        In this case, dynamodb.scan() is used to read all content.
+        Querying by primary key is not sufficient.
+        Changed filter expression and formatter to use "feedback_created_at" field instead of "created_at"
+        time attribute already has "T00:00:00" appended
+        Updated labels in formatted_feedback
+        """
         start_time = query_params.get('startTime')
         end_time = query_params.get('endTime')
-        topic = query_params.get('topic')
-        exclusive_start_key = query_params.get('nextPageToken')  # Pagination token        
-        
-        response = None        
-        
-        if not topic or topic=="any":        
-            query_kwargs = {
-                'IndexName' : 'AnyIndex',
-                'KeyConditionExpression': Key('Any').eq("YES") & Key('CreatedAt').between(start_time, end_time),
-                'ScanIndexForward' : False,
-                'Limit' : 10
-            } 
-        else:
-            query_kwargs = {
-                'KeyConditionExpression': Key('CreatedAt').between(start_time, end_time) & Key('Topic').eq(topic),
-                'ScanIndexForward' : False,
-                'Limit' : 10
+        response = messages_table.scan(
+            FilterExpression=Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
+        )
+        items = response.get('Items', [])
+
+        formatted_feedback = [
+            {
+                "FeedbackID": item['pk_message_id'],
+                "SessionID": item['sk_session_id'],
+                "UserPrompt": item.get('user_prompt', ''),
+                "FeedbackComments": item.get('feedback_message', ''),
+                "FeedbackCategory": item.get('feedback_category', ''),
+                "FeedbackRank": item.get('feedback_rank', ''),
+                "FeedbackType": item.get('feedback_type', ''),
+                "ChatbotMessage": item.get('bot_response', ''),
+                "CreatedAt": item.get('feedback_created_at', '')
             }
-
-        if exclusive_start_key:
-            query_kwargs['ExclusiveStartKey'] = json.loads(exclusive_start_key)
-        
-        response = table.query(**query_kwargs)
-        
-        body = {
-            'Items':  response['Items'],            
-        }
-        
-        if 'LastEvaluatedKey' in response:
-            body['NextPageToken'] = json.dumps(response['LastEvaluatedKey'])
+            for item in items
+        ]
 
         return {
-            'headers': {
-                'Access-Control-Allow-Origin': "*"
-            },
+            'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 200,
-            'body': json.dumps(body, cls=DecimalEncoder)
+            'body': json.dumps({
+                'Items': formatted_feedback
+            }, cls=DecimalEncoder)
         }
+
     except Exception as e:
-        print("Caught error: DynamoDB error - could not get feedback")
+        print(e)
         return {
-            'headers': {
-                'Access-Control-Allow-Origin': "*"
-            },
+            'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 500,
-            'body': json.dumps('Failed to retrieve feedback: ' + str(e))
+            'body': json.dumps({'error': f'Failed to retrieve feedback: {str(e)}'})
         }
-        
+
+
 def delete_feedback(event):
     try:
-        # Extract FeedbackID from the event
-        # feedback_id = json.loads(event['body']).get('FeedbackID')
-        query_params = event.get('queryStringParameters', {})
-        topic = query_params.get('topic')
-        created_at = query_params.get('createdAt')
-        
-        if not topic:
-            return {
-                'headers': {
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'statusCode': 400,
-                'body': json.dumps('Missing FeedbackID')
-            }
-        # Delete the item from the DynamoDB table
-        response = table.delete_item(
+        data = json.loads(event['body'])
+        session_id = data['session_id']
+        message_id = data['message_id']
+
+        response = messages_table.update_item(
             Key={
-                'Topic': topic,
-                'CreatedAt' : created_at
-            }
+                'pk_message_id': message_id,
+                'sk_session_id': session_id
+            },
+            UpdateExpression="REMOVE feedback_type, feedback_rank, feedback_category, feedback_message, feedback_created_at",
+            ReturnValues="UPDATED_NEW"
         )
+
         return {
-            'headers': {
-                'Access-Control-Allow-Origin': '*'
-            },
+            'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 200,
-            'body': json.dumps({'message': 'Feedback deleted successfully'})
+            'body': json.dumps({'message': 'Feedback deleted successfully', 'updated_attributes': response['Attributes']})
         }
+
     except Exception as e:
-        print("Caught error: DynamoDB error - could not delete feedback")
+        print(e)
         return {
-            'headers': {
-                'Access-Control-Allow-Origin': '*'
-            },
+            'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 500,
-            'body': json.dumps('Failed to delete feedback: ' + str(e))
+            'body': json.dumps({'error': f'Failed to delete feedback: {str(e)}'})
         }
