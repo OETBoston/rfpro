@@ -55,15 +55,6 @@ export default function ChatMessage(props: ChatMessageProps) {
 
 
   const handleSubmit = () => {
-    if (selectedIcon === 0 && !selectedIssue) {
-      alert("Please select an issue before submitting.");
-      return;
-    }
-    if (!selectedRankValue) {
-      alert("Please rate how helpful Bidbot was.");
-      return;
-    }
-    // Handle feedback submission
     if (selectedIcon === 0) {
       props.onThumbsDown(selectedIssue || "", selectedRankValue, feedbackMessage.trim());
     } else {
@@ -75,17 +66,6 @@ export default function ChatMessage(props: ChatMessageProps) {
     setSelectedRankValue(null);
     setFeedbackMessage("");
   };
-
-  // const feedbackOptions = [
-  //   { value: "error-messages", label: "Error Messages" },
-  //   { value: "not-clear", label: "Not Clear" },
-  //   { value: "poorly-formatted", label: "Poorly Formatted" },
-  //   { value: "inaccurate", label: "Inaccurate" },
-  //   { value: "not-relevant", label: "Not Relevant to My Question" },
-  //   { value: "other", label: "Other" },
-  // ];
-
-  // const [selectedRadioValue, setSelectedRadioValue] = useState(null);
 
   const handleRadioChange = (event) => {
     setSelectedIssue(event.target.value);
@@ -118,11 +98,6 @@ export default function ChatMessage(props: ChatMessageProps) {
           {/* Thumbs-Down Specific Feedback */}
           {selectedIcon === 0 && (
             <FormField label="BIDBOT'S ANSWER WAS..." stretch>
-              {/* <RadioGroup
-                value={selectedIssue}
-                onChange={({ detail }) => setSelectedIssue(detail.value)}
-                items={feedbackOptions}
-              /> */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 2fr)' }}>
                 <label>
                   <input type="radio" name="category" value="Error Messages" checked={selectedIssue === 'Error Messages'} onChange={handleRadioChange} />
