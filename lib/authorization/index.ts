@@ -49,12 +49,18 @@ export class AuthorizationStack extends Construct {
       userPoolId: userPool.userPoolId
     });
 
+    const userPoolOutsideGroup = new cognito.CfnUserPoolGroup(this, 'OutsideUserGroup', {
+      groupName: 'OutsideUsers',
+      userPoolId: userPool.userPoolId
+    });
+
     const addUserToGroupLambda = new lambda.Function(this, 'AddUserToGroupLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, "user-group-handler")),
       environment: {
-        BASIC_USER_GROUP_NAME: userPoolBasicGroup.groupName!
+        BASIC_USER_GROUP_NAME: userPoolBasicGroup.groupName!,
+        OUTSIDE_USER_GROUP_NAME: userPoolOutsideGroup.groupName!
       }
     });
 
