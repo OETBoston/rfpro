@@ -64,7 +64,7 @@ export default function Playground() {
           <b>Signing Out:</b> If you’d like to sign out, click the <b>person icon</b> located above the “i” button in the top right corner.
           </p><br>
           
-          <p>If you have any questions or feedback about BidBot, please leave feedback in the tool or reach out to Maia Materman (maia.materman@boston.gov). </p> 
+          <p>If you have any questions or feedback about BidBot, please leave feedback in the tool or reach out to <a href= "mailto:bidbot@boston.gov">bidbot@boston.gov</a>. </p> 
           
           <p> Happy Procuring!</p>
 

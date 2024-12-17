@@ -123,7 +123,7 @@ export default function Chat(props: { sessionId?: string}) {
           statusIconAriaLabel="Info"
           header=""
        >
-        AI Models can make mistakes. Be mindful in validating important information.
+        AI Models can make mistakes. Be mindful in validating important information. During the pilot, the tool will also capture your responses to ensure that it is giving accurate information.
       </Alert> )}
 
       
