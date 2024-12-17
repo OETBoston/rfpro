@@ -2,291 +2,333 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 import json
-from datetime import datetime
+from datetime import datetime, timezone
+from decimal import Decimal
+import uuid
 
-# Retrieve DynamoDB table and secondary index names from environment variables
-DDB_TABLE_NAME = os.environ["DDB_TABLE_NAME"]
-# DDB_SECONDARY_INDEX_NAME = os.environ["DDB_SECONDARY_INDEX_NAME"]
+SESSIONS_TABLE = os.environ["SESSIONS_TABLE"]
+MESSAGES_TABLE = os.environ["MESSAGES_TABLE"]
+REVIEWS_TABLE = os.environ["REVIEWS_TABLE"]
 
-# Initialize a DynamoDB resource using boto3 with a specific AWS region
 dynamodb = boto3.resource("dynamodb", region_name='us-east-1')
-# Connect to the specified DynamoDB table
-table = dynamodb.Table(DDB_TABLE_NAME)
+sessions_table = dynamodb.Table(SESSIONS_TABLE)
+messages_table = dynamodb.Table(MESSAGES_TABLE)
+reviews_table = dynamodb.Table(REVIEWS_TABLE)
 
-# Define a function to add a session or update an existing one in the DynamoDB table
-def add_session(session_id, user_id, chat_history, title, new_chat_entry):
+# Custom JSON encoder
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super(DecimalEncoder, self).default(obj)
+
+def _generate_message_id():
+    return f"MESSAGE-{int(datetime.now().timestamp())}-{uuid.uuid4().hex[:8]}"
+
+def add_new_session_with_first_message(session_id, user_id, title, first_chat_entry):
     try:
-        # Attempt to add an item to the DynamoDB table with provided details
-        response = table.put_item(
+        session_id = session_id
+        message_id = _generate_message_id()
+
+        sessions_table.put_item(
             Item={
-                'user_id': user_id,  # Identifier for the user
-                'session_id': session_id,  # Unique identifier for the session
-                'chat_history': [new_chat_entry],  # List of chat history, initiating with the new entry
-                "title": title.strip(),  # Title of the session
-                "time_stamp": str(datetime.now())  # Current timestamp as a string
+                'pk_session_id': session_id,
+                'user_id': user_id,
+                'title': title.strip(),
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat(),
+                'message_count': 1
             }
         )
-        # Return any attributes returned by the DynamoDB operation, default to an empty dictionary if none
-        return response.get("Attributes", {})
-    except ClientError as error:
-        # Check for specific DynamoDB client errors
-        print("Caught error: DynamoDB error - could not add new session")
-        if error.response["Error"]["Code"] == "ResourceNotFoundException":
-            # Return an error message if the DynamoDB resource (e.g., table, item) is not found
-            return {'statusCode': 404,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps(f"No record found with session id: {session_id}")}
-        else:
-            # Return a general error message for other client errors encountered
-            return {'statusCode': 500,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps(str(error))}
 
-
-# A function to retrieve a session from DynamoDB based on session_id and user_id
-def get_session(session_id, user_id):
-    # Initialize a variable to hold the response from DynamoDB
-    response = {}
-    try:
-        # Attempt to retrieve an item using the session_id and user_id as keys
-        response = table.get_item(Key={"session_id": session_id, "user_id": user_id})
-    except ClientError as error:
-        print("Caught error: DynamoDB error - could not get session")
-        # Handle specific error when the specified resource is not found in DynamoDB
-        if error.response["Error"]["Code"] == "ResourceNotFoundException":
-            # Return a 404 Not Found status code and message when the item is not found
-            return {
-                'statusCode': 404,
-                'headers': {'Access-Control-Allow-Origin': '*'},  # Allow all domains for CORS
-                'body':  json.dumps(f"No record found with session id: {session_id}")
+        messages_table.put_item(
+            Item={
+                'pk_message_id': message_id,
+                'sk_session_id': session_id,
+                'user_prompt': first_chat_entry['user_prompt'],
+                'bot_response': first_chat_entry['bot_response'],
+                'sources': first_chat_entry.get('sources', []),
+                'created_at': datetime.now().isoformat(),
+                'response_time': Decimal("0")
             }
-        else:
-            # Return a 500 Internal Server Error status for all other DynamoDB errors
-            return {
-                'statusCode': 500,
-                'headers': {'Access-Control-Allow-Origin': '*'},  # Allow all domains for CORS
-                'body': json.dumps('An unexpected error occurred')
-            }
-
-    # Prepare the response to the client with a 200 OK status if the item is successfully retrieved
-    response_to_client = {
-        'statusCode': 200,
-        'headers': {
-            'Access-Control-Allow-Origin': '*'  # Allow all domains for CORS
-        },
-        'body': json.dumps(response.get("Item", {}))  # Convert the retrieved item to JSON format
-    }
-    # Return the prepared response to the client
-    return response_to_client
-
-            
-def update_session(session_id, user_id, new_chat_entry):
-    try:
-        # Fetch current session details
-        session_response = get_session(session_id, user_id)
-        if 'statusCode' in session_response and session_response['statusCode'] != 200:
-            return session_response  # Return the error from get_session if any
-
-        session_data = json.loads(session_response['body'])
-        
-        # Check if 'chat_history' exists in the session data
-        current_chat_history = session_data.get('chat_history', [])
-        
-        # Append the new chat entry to the existing chat history
-        updated_chat_history = current_chat_history + [new_chat_entry]
-        
-        # Update the item in DynamoDB
-        response = table.update_item(
-            Key={"session_id": session_id, "user_id": user_id},
-            UpdateExpression="set chat_history = :chat_history",
-            ExpressionAttributeValues={":chat_history": updated_chat_history},
-            ReturnValues="UPDATED_NEW"
         )
+
         return {
             'statusCode': 200,
-            'headers': {'Access-Control-Allow-Origin': '*' },
-            'body': response.get("Attributes", {})
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({
+                "session_id": session_id,
+                "message_id": message_id
+            })
         }
+
     except ClientError as error:
-        print("Caught error: DynamoDB error - could not update session")
-        # Return a structured error message and status code
-        error_code = error.response['Error']['Code']
-        if error_code == "ResourceNotFoundException":
-            return {
-                'statusCode': 404,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'error': str(error),
-                'body': f"No record found with session id: {session_id}"
-            }
-        else:
-            return {
-                'statusCode': 500,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'error': str(error),
-                'body': 'Failed to update the session due to a database error.'
-            }
-    except Exception as general_error:
-        print("Caught error: DynamoDB error - could not update session")
-        # Return a generic error response for unexpected errors
+        print(f"Error creating new session: {error}")
         return {
             'statusCode': 500,
             'headers': {'Access-Control-Allow-Origin': '*'},
-            'error': str(general_error),
-            'body': 'An unexpected error occurred while updating the se.'
+            'body': json.dumps(str(error))
+        }
+
+
+def add_message_to_existing_session(session_id, new_chat_entry):
+    try:
+        message_id = _generate_message_id()
+
+        messages_table.put_item(
+            Item={
+                'pk_message_id': message_id,
+                'sk_session_id': session_id,
+                'user_prompt': new_chat_entry['user_prompt'],
+                'bot_response': new_chat_entry['bot_response'],
+                'sources': new_chat_entry.get('sources', []),
+                'created_at': datetime.now().isoformat(),
+                'response_time': Decimal("0")
+            }
+        )
+
+        sessions_table.update_item(
+            Key={'pk_session_id': session_id},
+            UpdateExpression="SET updated_at = :updated_at, message_count = message_count + :inc",
+            ExpressionAttributeValues={
+                ':updated_at': datetime.now().isoformat(),
+                ':inc': 1
+            }
+        )
+
+        return {
+            'statusCode': 200,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({
+                "session_id": session_id,
+                "message_id": message_id
+            })
+        }
+
+    except ClientError as error:
+        print(f"Error adding message to session {session_id}: {error}")
+        return {
+            'statusCode': 500,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps(str(error))
+        }
+
+def get_session(session_id, user_id):
+    """
+    Add message_id to chat_history JSON so that it can be parsed by the frontend 
+    for the get_feedback() function inside feedback handler Lambda function
+    """
+    try:
+        session_response = sessions_table.get_item(Key={'pk_session_id': session_id})
+        if 'Item' not in session_response:
+            return {
+                'statusCode': 200,
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({})
+            }
+
+        session_data = session_response['Item']
+
+        messages_response = messages_table.query(
+            IndexName='SessionMessagesIndex',
+            KeyConditionExpression="sk_session_id = :sid",
+            ExpressionAttributeValues={':sid': session_id},
+            ScanIndexForward=True
+        )
+
+        messages = messages_response.get('Items', [])
+        
+        chat_history = [
+            {
+                "user": message.get("user_prompt", ""),
+                "chatbot": message.get("bot_response", ""),
+                "metadata": json.dumps(message.get("sources", [])),
+                "messageId": message.get("pk_message_id", "")
+            }
+            for message in messages
+        ]
+
+        session_data["chat_history"] = chat_history
+
+        return {
+            'statusCode': 200,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps(session_data, cls=DecimalEncoder)
+        }
+
+    except ClientError as error:
+        print(f"DynamoDB ClientError: {error}")
+        return {
+            'statusCode': 500,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps(str(error))
+        }
+
+
+
+def update_session(session_id, user_id, new_chat_entry):
+    try:
+        message_id = _generate_message_id()
+        
+        messages_table.put_item(
+            Item={
+                'pk_message_id': message_id,
+                'sk_session_id': session_id,
+                'user_prompt': new_chat_entry,
+                'bot_response': None,
+                'sent_at': datetime.now().isoformat(),
+                'response_time': Decimal("0")
+            }
+        )
+        
+        sessions_table.update_item(
+            Key={'pk_session_id': session_id},
+            UpdateExpression="SET updated_at = :updated_at, message_count = message_count + :inc",
+            ExpressionAttributeValues={
+                ':updated_at': datetime.now().isoformat(),
+                ':inc': 1
+            }
+        )
+        
+        return {
+            'statusCode': 200,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({"message_id": message_id}, cls=DecimalEncoder)
+        }
+    except ClientError as error:
+        print(f"DynamoDB ClientError: {error}")
+        return {
+            'statusCode': 500,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps(str(error))
         }
 
 
 def delete_session(session_id, user_id):
     try:
-        # Attempt to delete an item from the DynamoDB table based on the provided session_id and user_id.
-        table.delete_item(Key={"session_id": session_id, "user_id": user_id})
-    except ClientError as error:
-        print("Caught error: DynamoDB error - could not delete session")
-        # Handle specific DynamoDB client errors. If the item cannot be found or another error occurs, return the appropriate message.
-        error_code = error.response['Error']['Code']
-        if error_code == "ResourceNotFoundException":
-            return { 'statusCode': 404, "id": session_id, "deleted": False,'headers': {'Access-Control-Allow-Origin': '*'}, "body": json.dumps(f"No record found with session id: {session_id}")}
-        else:
-            return { 'statusCode': 500, "id": session_id, "deleted": False,'headers': {'Access-Control-Allow-Origin': '*'}, "body": json.dumps(f"Error occurred: {error}")}
 
-    # If no exceptions are raised, return a response indicating that the deletion was successful.
-    return {'statusCode': 200, "id": session_id,'headers': {'Access-Control-Allow-Origin': '*'}, "deleted": True}
-
-
-
-def delete_user_sessions(user_id):
-    try:
-        # Fetch all sessions associated with the given user_id. This function should return a list of session dictionaries.
-        sessions = list_sessions_by_user_id(user_id)
-        ret_value = []  # Initialize a list to hold the results of the deletion attempts.
-
-        # Iterate through each session fetched from the database.
-        for session in sessions:
-            # Attempt to delete each session and capture the result.
-            result = delete_session(session["SessionId"], user_id)
-            # Append the result of the deletion attempt to the ret_value list. 
-            # This includes the session ID and whether the deletion was successful.
-            ret_value.append({"id": session["SessionId"], "deleted": result["deleted"]})
-
-        # Return a list of dictionaries, each containing the session ID and deletion result.
-        return ret_value
-
-    except Exception as error:
-        # Handle any unexpected errors that might occur during the process.
-        # Return a list containing a single dictionary with an error message.
-        return [{"error": str(error)}]
+        messages = messages_table.query(
+            IndexName='SessionMessagesIndex',
+            KeyConditionExpression="sk_session_id = :sid",
+            ExpressionAttributeValues={':sid': session_id}
+        )['Items']
         
+        with messages_table.batch_writer() as batch:
+            for message in messages:
+                batch.delete_item(Key={'pk_message_id': message['pk_message_id'], 'sk_session_id': session_id})
         
-def list_sessions_by_user_id(user_id, limit = 15):
-    items = []  # Initialize an empty list to store the fetched session items
-
-    try:
-        last_evaluated_key = None  # Initialize the key to control the pagination loop
-
-        # Keep fetching until we have 15 items or there are no more items to fetch
-        while len(items) < limit:
-            response = table.query(
-                IndexName='TimeIndex',  # Specify the secondary index to perform the query
-                ProjectionExpression='session_id, title, time_stamp',  # Limit the fields returned in the results
-                KeyConditionExpression="user_id = :user_id",  # Define the key condition for the query
-                ExpressionAttributeValues={":user_id": user_id},  # Bind the user_id value to the placeholder in KeyConditionExpression
-                ScanIndexForward=False,  # Sort the results in descending order by the sort key
-                Limit=limit - len(items),  # Dynamically adjust the query limit based on how many items we've already retrieved
-            )
-            items.extend(response.get("Items", []))  # Extend the items list with the newly fetched items
-
-            last_evaluated_key = response.get("LastEvaluatedKey")  # Update the pagination key
-            if not last_evaluated_key:  # Break the loop if there are no more items to fetch
-                break
-
+        sessions_table.delete_item(Key={'pk_session_id': session_id})
+        
+        return {
+            'statusCode': 200,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps(f"Session {session_id} deleted.")
+        }
     except ClientError as error:
-        print("Caught error: DynamoDB error - could not list user sessions")
-        # More detailed client error handling based on DynamoDB error codes
-        error_code = error.response['Error']['Code']
-        if error_code == "ResourceNotFoundException":
-            return {'statusCode': 404,
-            'headers': { 'Access-Control-Allow-Origin': '*'}, 
-            'body': f"No record found for user id: {user_id}"}
-        elif error_code == "ProvisionedThroughputExceededException":
-            return {'statusCode': 429,
-            'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': "Request limit exceeded"}
-        elif error_code == "ValidationException":
-            return {'statusCode': 400,
-            'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': "Invalid input parameters"}
-        else:
-            return {'statusCode': 500,
-            'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': "Internal server error"}
-    except KeyError as key_error:
-        print("Caught error: DynamoDB error - could not list user sessions")
-        # Handle errors that might occur if expected keys are missing in the response
-        return {'statusCode': 500,
-        'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': f"Key error: {str(key_error)}"}
-    except Exception as general_error:
-        print("Caught error: DynamoDB error - could not list user sessions")
-        # Generic error handling for any other unforeseen errors
-        return {'statusCode': 500,
-        'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        }, 'body': json.dumps(f"An unexpected error occurred: {str(general_error)}")}
+        print(f"DynamoDB ClientError: {error}")
+        return {
+            'statusCode': 500,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps(str(error))
+        }
 
-    # Sort the items by 'time_stamp' in descending order to ensure the latest sessions appear first
-    sorted_items = sorted(items, key=lambda x: x['time_stamp'], reverse=True)
-    sorted_items = list(map(lambda x: {"time_stamp" : x["time_stamp"], "session_id" : x["session_id"], "title" : x["title"].strip()},sorted_items))
+def list_sessions_by_user_id(user_id, limit=15):
+    items = []
+    last_evaluated_key = None
 
-    # Prepare the HTTP response object with a status code, headers, and body
-    response = {
-        'statusCode': 200,  # HTTP status code indicating a successful operation
-        'headers': {
-            'Access-Control-Allow-Origin': '*'  # CORS header allowing access from any domain
-        },
-        'body': json.dumps(sorted_items)  # Convert the sorted list of items to JSON format for the response body
-    }
-    return response  # Return the response object
+    while len(items) < limit:
+        query_params = {
+            'IndexName': 'UserSessionsIndex',
+            'KeyConditionExpression': 'user_id = :uid',
+            'ExpressionAttributeValues': {':uid': user_id},
+            'ScanIndexForward': False,
+            'Limit': limit - len(items)
+        }
 
+        if last_evaluated_key:
+            query_params['ExclusiveStartKey'] = last_evaluated_key
 
+        response = sessions_table.query(**query_params)
+        items.extend(response.get("Items", []))
+        
+        last_evaluated_key = response.get("LastEvaluatedKey")
+        if not last_evaluated_key:
+            break
 
+    sorted_items = sorted(items, key=lambda x: x['created_at'], reverse=True)
+
+    formatted_items = [
+        {
+            "session_id": item["pk_session_id"],
+            "title": item["title"].strip(),
+            "time_stamp": item["created_at"]
+        }
+        for item in sorted_items
+    ]
+    
+    return formatted_items
+
+def assemble_chat_history(session_id):
+    """
+    Assemble chat history for a given session ID by retrieving messages
+    from the messages table and formatting them as required.
+    """
+    try:
+        response = messages_table.query(
+            IndexName='SessionMessagesIndex',
+            KeyConditionExpression="sk_session_id = :sid",
+            ExpressionAttributeValues={':sid': session_id},
+            ScanIndexForward=True
+        )
+        
+        # Extract and format messages
+        messages = response.get('Items', [])
+        chat_history = []
+        for message in messages:
+            chat_history.append({
+                "M": {
+                    "user": {"S": message.get("user_prompt", "")},
+                    "chatbot": {"S": message.get("bot_response", "")},
+                    "metadata": {"S": json.dumps(message.get("metadata", []))}
+                }
+            })
+        
+        return chat_history
+    except ClientError as error:
+        print(f"Error assembling chat history for session {session_id}: {error}")
+        return []
 
 def lambda_handler(event, context):
     data = json.loads(event['body'])
     operation = data.get('operation')
-    user_id = data.get('user_id')
-    session_id = data.get('session_id')
-    chat_history = data.get('chat_history', None)
-    new_chat_entry = data.get('new_chat_entry')
-    title = data.get('title', f"Chat on {str(datetime.now())}")
-    if operation != 'list_sessions_by_user_id':
-        print(operation)
-    print(data)
-    print(new_chat_entry)
-
-    if operation == 'add_session':
-        return add_session(session_id, user_id, chat_history, title, new_chat_entry)
+    
+    if operation == 'add_new_session_with_first_message':
+        return add_new_session_with_first_message(
+            data.get('session_id'),
+            data['user_id'],
+            data['title'],
+            data['new_chat_entry']
+        )
+    elif operation == 'add_message_to_existing_session':
+        return add_message_to_existing_session(
+            data['session_id'],
+            data['new_chat_entry']
+        )
     elif operation == 'get_session':
-        return get_session(session_id, user_id)
+        return get_session(data['session_id'], data['user_id'])
     elif operation == 'update_session':
-        return update_session(session_id, user_id, new_chat_entry)
+        return update_session(data['session_id'], data['user_id'], data['new_chat_entry'])
     elif operation == 'list_sessions_by_user_id':
-        return list_sessions_by_user_id(user_id)
+        return list_sessions_by_user_id(data['user_id'])
     elif operation == 'list_all_sessions_by_user_id':
-        return list_sessions_by_user_id(user_id,limit=100)
+        return list_sessions_by_user_id(data['user_id'],limit=100)
     elif operation == 'delete_session':
-        return delete_session(session_id, user_id)
-    elif operation == 'delete_user_sessions':
-        return delete_user_sessions(user_id)
+        return delete_session(data['session_id'], data['user_id'])
+    elif operation == 'assemble_chat_history':
+        return assemble_chat_history(data['session_id'])
     else:
-        response = {
+        return {
             'statusCode': 400,
-            'headers': {
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps(f'Operation not found/allowed! Operation Sent: {operation}')
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps(f"Invalid operation: {operation}")
         }
-        return response
