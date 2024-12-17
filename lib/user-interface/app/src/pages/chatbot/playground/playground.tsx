@@ -31,10 +31,10 @@ export default function Playground() {
           </p>
           <h3>How to Use BidBot</h3>
           <p>
-          <b>Send a Message:</b> Click the box at the bottom of the window that says "Send a message", and type your question or request— like "I want to buy new water bottles, what should I do?" or "Write me an RFP for a contractor who will cut trees"— then press the <b>send button</b>. You can ask anything procurement-related, and don’t worry—you won’t break the tool!
+          <b>Send a Message:</b> Click the box at the bottom of the window that says "Send a message", and type your question or request— like <i>"I want to buy new water bottles, what should I do?"</i> or <i>"Write me an RFP for a contractor who will cut trees"</i>— then press the <b>send button</b>. You can ask anything procurement-related, and don’t worry— you won’t break the tool!
           </p>
           <p>
-          <b>Responding to BidBot:</b> After BidBot replies, you can continue the conversation like you would in a text chat. For example, you might ask, "How do I write a requisition? Can you create one for me?" and send it the same way as your first message (clicking into the "Send a message" box, typing your message, and clicking the blue send button).
+          <b>Responding to BidBot:</b> After BidBot replies, you can continue the conversation like you would in a text chat. For example, you might ask, <i>"How do I write a requisition? Can you create one for me?" </i> and send it the same way as your first message— by clicking into the "Send a message" box, typing your message, and clicking the blue send button.
           </p>
           <h3>What You Can Do with BidBot’s Responses</h3>
           <p>
@@ -55,7 +55,7 @@ export default function Playground() {
           <b>Resuming a Conversation:</b> To pick up a past conversation, just click one of the <b>titles from the list</b>. This will take you back to where you left off in that conversation.
           </p>
           <p>
-          <b>Closing the List of Sessions:</b> If you want to hide the list of sessions, click the back arrow next to the New session button. This will close the list, but you can still send messages to BidBot while the session list is open.
+          <b>Closing the List of Sessions:</b> If you want to hide the list of sessions, <b>click the back arrow</b> next to the New session button. This will close the list, but you can still send messages to BidBot while the session list is open.
           </p>
           <h3>Additional Options and Help</h3>
           <p>
@@ -67,7 +67,10 @@ export default function Playground() {
           <p>
           <b>Signing Out:</b> If you’d like to sign out, click the <b>person icon</b> located above the “i” button in the top right corner.
           </p>
+
           <p>If you have any questions or feedback about BidBot, please leave feedback in the tool or reach out to <a href= "mailto:bidbot@boston.gov">bidbot@boston.gov</a>. </p> 
+          
+          <p> Happy Procuring!</p>
         </HelpPanel>
       }
       toolsWidth={300}       
