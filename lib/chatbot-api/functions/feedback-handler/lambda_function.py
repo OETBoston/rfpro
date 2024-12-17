@@ -51,10 +51,12 @@ def post_feedback(event):
         session_id = feedback_data['sessionId']
         message_id = feedback_data['messageId']
         feedback_type = feedback_data.get('feedbackType', 'neutral')
-        feedback_rank = feedback_data.get('feedbackRank', 0)
+        feedback_rank = feedback_data.get('feedbackRank', None)
         feedback_category = feedback_data.get('feedbackCategory', 'general')
         feedback_message = feedback_data.get('feedbackMessage', '')
         feedback_created_at = datetime.utcnow().isoformat()
+        if feedback_rank:
+            feedback_rank = Decimal(feedback_rank)
 
         response = messages_table.update_item(
             Key={
@@ -65,7 +67,7 @@ def post_feedback(event):
                               feedback_message = :message, feedback_created_at = :created_at",
             ExpressionAttributeValues={
                 ':type': feedback_type,
-                ':rank': Decimal(feedback_rank),
+                ':rank': feedback_rank,
                 ':category': feedback_category,
                 ':message': feedback_message,
                 ':created_at': feedback_created_at
