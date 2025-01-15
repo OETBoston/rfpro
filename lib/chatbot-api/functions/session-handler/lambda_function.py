@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 import uuid
 
-SESSIONS_TABLE = os.environ["SESSIONS_TABLE"]
-MESSAGES_TABLE = os.environ["MESSAGES_TABLE"]
-REVIEWS_TABLE = os.environ["REVIEWS_TABLE"]
+SESSIONS_TABLE = os.getenv("SESSION_TABLE")
+MESSAGES_TABLE = os.getenv("MESSAGES_TABLE")
+REVIEWS_TABLE = os.getenv("REVIEW_TABLE")
 
 dynamodb = boto3.resource("dynamodb", region_name='us-east-1')
 sessions_table = dynamodb.Table(SESSIONS_TABLE)

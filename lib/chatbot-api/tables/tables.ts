@@ -17,7 +17,7 @@ export class TableStack extends Stack {
 
     // Define the Chat Sessions Table
     const sessionsTable = new Table(this, 'ChatSessionsTable', {
-      tableName: "ChatSessionsTable",
+      tableName: process.env.CDK_STACK_NAME + "ChatSessionsTable",
       partitionKey: { name: 'pk_session_id', type: AttributeType.STRING },
     });
 
@@ -40,7 +40,7 @@ export class TableStack extends Stack {
 
     // Define the Messages Table
     const messagesTable = new Table(this, 'ChatMessagesTable', {
-      tableName: "ChatMessagesTable",
+      tableName: process.env.CDK_STACK_NAME + "ChatMessagesTable",
       partitionKey: { name: 'pk_message_id', type: AttributeType.STRING },
       sortKey: { name: 'sk_session_id', type: AttributeType.STRING },
     });
@@ -64,7 +64,7 @@ export class TableStack extends Stack {
 
     // Define the Reviews Table
     const reviewsTable = new Table(this, 'ChatReviewsTable', {
-      tableName: "ChatReviewsTable",
+      tableName: process.env.CDK_STACK_NAME + "ChatReviewsTable",
       partitionKey: { name: 'pk_review_id', type: AttributeType.STRING },
     });
 
