@@ -37,6 +37,8 @@ export class TableStack extends Stack {
     // });
 
     this.sessionsTable = sessionsTable;
+
+    // Define the Messages Table
     const messagesTable = new Table(this, 'ChatMessagesTable', {
       tableName: process.env.CDK_STACK_NAME + "ChatMessagesTable",
       partitionKey: { name: 'pk_message_id', type: AttributeType.STRING },

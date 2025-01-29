@@ -28,14 +28,8 @@ export const languageList = [
 ];
 
 export const feedbackCategories = [
-  {label: "All Positive Responses", value:"Positive", disabled: false},
-  {label: "All Negative Responses", value:"Negative", disabled: false},
-  {label: " Error Messages", value:"Error Messages", disabled: false},
-  {label: " Not Clear", value:"Not Clear", disabled: false},
-  {label: " Poorly Formatted", value:"Poorly Formatted", disabled: false},
-  {label: " Inaccurate", value:"Inaccurate", disabled: false},
-  {label: " Not Relevant to Question", value:"Not Relevant to My Question", disabled: false},
-  {label: " Other", value:"Other", disabled: false}, 
+  {label: "Example 1", value:"rp", disabled: false},
+  {label: "Example 2", value:"rf", disabled: false},  
 ]
 
 export const feedbackTypes = [
