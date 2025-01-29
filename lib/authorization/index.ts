@@ -81,6 +81,11 @@ export class AuthorizationStack extends Construct {
       addUserToGroupLambda
     )
 
+    userPool.addTrigger(
+      cognito.UserPoolOperation.POST_CONFIRMATION,
+      addUserToGroupLambda
+    )
+
     // Create a provider attribute for mapping Azure claims
     // const providerAttribute = new ProviderAttribute({
     //   name: 'custom_attr',
@@ -91,6 +96,10 @@ export class AuthorizationStack extends Construct {
         domainPrefix: process.env.COGNITO_DOMAIN_PREFIX!,
       },
     });
+
+    // When testing, add a conditional check for completeness for all 
+    // the below credentials, use:
+    // cognito.UserPoolClientIdentityProvider.COGNITO
     
     // Add the OIDC identity provider to the User Pool
     const oidcProvider = new UserPoolIdentityProviderOidc(this, 
@@ -119,6 +128,7 @@ export class AuthorizationStack extends Construct {
       supportedIdentityProviders: [
         // Use this to bypass SSO, you have to register users within the cognito user pool
         // cognito.UserPoolClientIdentityProvider.COGNITO
+        // Also the callbarck URLs need to be tested, this seems to be blocking
         UserPoolClientIdentityProvider.custom(oidcProvider.providerName)
       ],
       oAuth: {

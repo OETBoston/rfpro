@@ -79,7 +79,9 @@ export default function FeedbackTab(props: FeedbackTabProps) {
     async (params: { pageIndex?, nextPageToken?}) => {
       setLoading(true);
       try {
-        const result = await apiClient.userFeedback.getUserFeedback(selectedOption.value, value.startDate + "T00:00:00", value.endDate + "T23:59:59", params.nextPageToken)
+        console.log("Testing getuserfeedback function and params: ")
+        console.log(params);
+        const result = await apiClient.userFeedback.getUserFeedback(selectedOption.value, value.startDate + "T00:00:00", value.endDate + "T23:59:59", params.pageIndex)
 
         setPages((current) => {
           /** When any of the filters change, we want to reset the display back to page 1.
@@ -116,9 +118,14 @@ export default function FeedbackTab(props: FeedbackTabProps) {
     setCurrentPageIndex(1);
     setSelectedItems([]);
     if (needsRefresh.current) {
-      // console.log("needs refresh!")
+      console.log("needs refresh!")
+      console.log("currentPageIndex: 1,");
+      console.log(currentPageIndex);
       getFeedback({ pageIndex: 1 });
     } else {
+      console.log("doesn't need refresh?");
+      console.log("currentPageIndex: ");
+      console.log(currentPageIndex);
       getFeedback({ pageIndex: currentPageIndex });
     }
   }, [getFeedback]);
@@ -142,12 +149,12 @@ export default function FeedbackTab(props: FeedbackTabProps) {
   };
 
   /** Handles page refreshes */
-  const refreshPage = async () => {
-    if (currentPageIndex <= 1) {
-      await getFeedback({ pageIndex: currentPageIndex });
+  const refreshPage = async (currentPage = currentPageIndex) => {
+    if (currentPage <= 1) {
+      await getFeedback({ pageIndex: currentPage });
     } else {
-      const continuationToken = pages[currentPageIndex - 2]?.NextPageToken!;
-      await getFeedback({ pageIndex: currentPageIndex, nextPageToken: continuationToken });
+      const continuationToken = pages[currentPage - 2]?.NextPageToken!;
+      await getFeedback({ pageIndex: currentPage, nextPageToken: continuationToken });
     }
   };
 
@@ -300,7 +307,7 @@ export default function FeedbackTab(props: FeedbackTabProps) {
                     placeholder="Choose a category"
                     options={[...feedbackCategories, {label : "Any", value: "any", disabled: false}]}
                   />
-                  <Button iconName="refresh" onClick={refreshPage} />
+                  <Button iconName="refresh" onClick={(event) => refreshPage()} />
                   <Button
                     variant="primary"
                     onClick={() => {
@@ -330,15 +337,26 @@ export default function FeedbackTab(props: FeedbackTabProps) {
             <Box textAlign="center">No feedback available</Box>
           }
           pagination={
-            pages.length === 0 ? null : (
-              <Pagination
-                openEnd={true}
-                pagesCount={pages.length}
-                currentPageIndex={currentPageIndex}
-                onNextPageClick={onNextPageClick}
-                onPreviousPageClick={onPreviousPageClick}
-              />
-            )
+            // pages.length === 0 ? null : (
+            <Pagination
+              // openEnd={true}
+              // pagesCount={pages.length}
+              pagesCount={5}
+              currentPageIndex={currentPageIndex}
+              onChange={({ detail }) => {
+                console.log("Changing pagination page");
+                console.log(detail);
+                // needsRefresh.current = true;
+                setCurrentPageIndex(detail.currentPageIndex);
+                refreshPage(detail.currentPageIndex);
+                console.log("currentpageindex value: ");
+                console.log(currentPageIndex);
+                console.log(needsRefresh);
+              }}
+              // onNextPageClick={onNextPageClick}
+              // onPreviousPageClick={onPreviousPageClick} 
+            />
+            // )
           }
         />
       </I18nProvider>
