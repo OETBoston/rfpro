@@ -106,6 +106,7 @@ export class Website extends Construct {
     //     })-----------
     // }),
 
+    // This is properly set conditional wise, still needs testing
     const distribution = new cf.CloudFrontWebDistribution(
       this,
       "Distribution",
@@ -114,9 +115,9 @@ export class Website extends Construct {
         ...((process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL && process.env.CLOUDFRONT_CUSTOM_DOMAIN_SSL_CERTIFICATE_ARN) ? {
           viewerCertificate: cf.ViewerCertificate.fromAcmCertificate(
             acm.Certificate.fromCertificateArn(this, 'CloudfrontAcm', process.env.CLOUDFRONT_CUSTOM_DOMAIN_SSL_CERTIFICATE_ARN),
-            {
-              aliases: [process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL]
-            }
+            // {
+            //   aliases: [process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL]
+            // }
           )
         } : {})
       }

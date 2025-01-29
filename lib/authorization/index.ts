@@ -49,12 +49,18 @@ export class AuthorizationStack extends Construct {
       userPoolId: userPool.userPoolId
     });
 
+    const userPoolOutsideGroup = new cognito.CfnUserPoolGroup(this, 'OutsideUserGroup', {
+      groupName: 'OutsideUsers',
+      userPoolId: userPool.userPoolId
+    });
+
     const addUserToGroupLambda = new lambda.Function(this, 'AddUserToGroupLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, "user-group-handler")),
       environment: {
-        BASIC_USER_GROUP_NAME: userPoolBasicGroup.groupName!
+        BASIC_USER_GROUP_NAME: userPoolBasicGroup.groupName!,
+        OUTSIDE_USER_GROUP_NAME: userPoolOutsideGroup.groupName!
       }
     });
 
@@ -75,6 +81,11 @@ export class AuthorizationStack extends Construct {
       addUserToGroupLambda
     )
 
+    userPool.addTrigger(
+      cognito.UserPoolOperation.POST_CONFIRMATION,
+      addUserToGroupLambda
+    )
+
     // Create a provider attribute for mapping Azure claims
     // const providerAttribute = new ProviderAttribute({
     //   name: 'custom_attr',
@@ -85,6 +96,10 @@ export class AuthorizationStack extends Construct {
         domainPrefix: process.env.COGNITO_DOMAIN_PREFIX!,
       },
     });
+
+    // When testing, add a conditional check for completeness for all 
+    // the below credentials, use:
+    // cognito.UserPoolClientIdentityProvider.COGNITO
     
     // Add the OIDC identity provider to the User Pool
     const oidcProvider = new UserPoolIdentityProviderOidc(this, 
@@ -113,6 +128,7 @@ export class AuthorizationStack extends Construct {
       supportedIdentityProviders: [
         // Use this to bypass SSO, you have to register users within the cognito user pool
         // cognito.UserPoolClientIdentityProvider.COGNITO
+        // Also the callbarck URLs need to be tested, this seems to be blocking
         UserPoolClientIdentityProvider.custom(oidcProvider.providerName)
       ],
       oAuth: {

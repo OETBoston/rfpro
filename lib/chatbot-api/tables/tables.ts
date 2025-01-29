@@ -16,8 +16,8 @@ export class TableStack extends Stack {
     super(scope, id, props);
 
     // Define the Chat Sessions Table
-    const sessionsTable = new Table(this, 'rfproStackChatSessionsTable', {
-      tableName: "rfproStackChatSessionsTable",
+    const sessionsTable = new Table(this, 'ChatSessionsTable', {
+      tableName: process.env.CDK_STACK_NAME + "ChatSessionsTable",
       partitionKey: { name: 'pk_session_id', type: AttributeType.STRING },
     });
 
@@ -37,10 +37,8 @@ export class TableStack extends Stack {
     // });
 
     this.sessionsTable = sessionsTable;
-
-    // Define the Messages Table
-    const messagesTable = new Table(this, 'rfproStackChatMessagesTable', {
-      tableName: "rfproStackChatMessagesTable",
+    const messagesTable = new Table(this, 'ChatMessagesTable', {
+      tableName: process.env.CDK_STACK_NAME + "ChatMessagesTable",
       partitionKey: { name: 'pk_message_id', type: AttributeType.STRING },
       sortKey: { name: 'sk_session_id', type: AttributeType.STRING },
     });
@@ -63,8 +61,8 @@ export class TableStack extends Stack {
     this.messagesTable = messagesTable;
 
     // Define the Reviews Table
-    const reviewsTable = new Table(this, 'rfproStackChatReviewsTable', {
-      tableName: "rfproStackChatReviewsTable",
+    const reviewsTable = new Table(this, 'ChatReviewsTable', {
+      tableName: process.env.CDK_STACK_NAME + "ChatReviewsTable",
       partitionKey: { name: 'pk_review_id', type: AttributeType.STRING },
     });
 
