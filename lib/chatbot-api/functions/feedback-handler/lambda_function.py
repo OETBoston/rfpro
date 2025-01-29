@@ -172,6 +172,7 @@ def get_feedback(event):
         """
         start_time = query_params.get('startTime')
         end_time = query_params.get('endTime')
+        topic = query_params.get('topic')
         response = messages_table.scan(
             FilterExpression=Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
         )
