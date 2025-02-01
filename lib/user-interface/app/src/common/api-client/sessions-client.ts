@@ -173,4 +173,50 @@ export class SessionsClient {
     }
     return "DONE";
   }
+
+  // Gets all sessions for admin review
+  // Return format: [{"session_id" : "string", "user_id" : "string", "time_stamp" : "dd/mm/yy", "title" : "string"}...]
+  async getAllSessions(startTime: string, endTime: string, hasFeedback: string, hasReview: string) {
+    const auth = await Utils.authenticate();
+    let validData = false;
+    let output = [];
+    let runs = 0;
+    let limit = 3;
+    let errorMessage = "Could not load sessions"
+    while (!validData && runs < limit) {
+      runs += 1;
+      const response = await fetch(this.API + '/user-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + auth,
+        },
+        body: JSON.stringify({ 
+          "operation": "list_all_sessions",
+          "start_time": startTime,
+          "end_time": endTime,
+          "has_feedback": hasFeedback,
+          "has_review": hasReview,
+        })
+      });
+      if (response.status != 200) {
+        validData = false;
+        let jsonResponse = await response.json()        
+        errorMessage = jsonResponse;        
+        break;
+      }      
+      try {
+        output = await response.json();
+        validData = true;
+      } catch (e) {
+        // just retry, we get 3 attempts!
+        console.log(e);
+      }
+    }
+    if (!validData) {
+      throw new Error(errorMessage);
+    }
+    // console.log(output);
+    return output;
+  }
 }

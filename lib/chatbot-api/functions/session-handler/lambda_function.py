@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timezone
 from decimal import Decimal
 import uuid
+from boto3.dynamodb.conditions import Key, Attr
 
 SESSIONS_TABLE = os.getenv("SESSION_TABLE")
 MESSAGES_TABLE = os.getenv("MESSAGES_TABLE")
@@ -268,6 +269,71 @@ def list_sessions_by_user_id(user_id, limit=15):
     
     return formatted_items
 
+
+def list_all_sessions(start_time, end_time, has_feedback, has_review, limit=250):
+    # Get all (or first 250) sessions from sessions table
+    items = []
+    last_evaluated_key = None
+
+    while len(items) < limit:
+        if last_evaluated_key:
+            response = sessions_table.scan(
+                FilterExpression=Key('created_at').between(start_time, end_time),
+                ExclusiveStartKey=last_evaluated_key,
+                Limit=limit-len(items)
+            )
+        else: 
+            response = sessions_table.scan(
+                FilterExpression=Key('created_at').between(start_time, end_time),
+                Limit=limit
+            )
+        last_evaluated_key = response.get('LastEvaluatedKey')
+        
+        items.extend(response.get('Items', []))
+        
+        if not last_evaluated_key:
+            break
+
+    # Get list of session IDs that have at least 1 feedback response
+    sessions_with_feedback = set()
+    while True:
+        if last_evaluated_key:
+            response = messages_table.scan(
+                FilterExpression=Attr('feedback_type').exists(),
+                ExclusiveStartKey=last_evaluated_key
+            )
+        else: 
+            response = messages_table.scan(
+                FilterExpression=Attr('feedback_type').exists()
+            )
+        last_evaluated_key = response.get('LastEvaluatedKey')
+        
+        scan_items = response.get('Items', [])
+        session_id_set = set([item["sk_session_id"] for item in scan_items])
+        sessions_with_feedback.update(session_id_set)
+        
+        if not last_evaluated_key:
+            break
+
+
+    formatted_items = [
+        {
+            "session_id": item["pk_session_id"],
+            "title": item["title"].strip(),
+            "time_stamp": item["created_at"],
+            "has_feedback": ("Yes" if item["pk_session_id"] in sessions_with_feedback else "No")
+        }
+        for item in items
+    ]
+    
+    if has_feedback in {"yes", "no"}:
+        formatted_items = [
+            item for item in formatted_items if item["has_feedback"].lower() == has_feedback 
+        ]
+
+    return formatted_items
+
+
 def assemble_chat_history(session_id):
     """
     Assemble chat history for a given session ID by retrieving messages
@@ -322,6 +388,8 @@ def lambda_handler(event, context):
         return list_sessions_by_user_id(data['user_id'])
     elif operation == 'list_all_sessions_by_user_id':
         return list_sessions_by_user_id(data['user_id'],limit=100)
+    elif operation == 'list_all_sessions':
+        return list_all_sessions(data['start_time'], data['end_time'], data['has_feedback'], data['has_review'], limit=250)
     elif operation == 'delete_session':
         return delete_session(data['session_id'], data['user_id'])
     elif operation == 'assemble_chat_history':

@@ -7,8 +7,7 @@ import {
 } from "@cloudscape-design/components";
 import BaseAppLayout from "../../components/base-app-layout";
 import useOnFollow from "../../common/hooks/use-on-follow";
-import FeedbackTab from "./feedback-tab";
-import FeedbackPanel from "../../components/feedback-panel";
+import AllSessionsTab from "./all-sessions-tab";
 import { CHATBOT_NAME } from "../../common/constants";
 import { useState, useEffect } from "react";
 import { useAdmin } from "../../common/admin-context.js";
@@ -17,7 +16,7 @@ import { useAdmin } from "../../common/admin-context.js";
 export default function AllSessionsPage() {
   const isAdmin = useAdmin();
   const onFollow = useOnFollow();  
-  const [feedback, setFeedback] = useState<any>({});
+  const [session, setSession] = useState<any>({});
   
   /** If they are not an admin, show a page indicating so */
   if (!isAdmin) {
@@ -49,7 +48,6 @@ export default function AllSessionsPage() {
               text: CHATBOT_NAME,
               href: "/",
             },
-  
             {
               text: "All Sessions",
               href: "/admin/all-sessions",
@@ -57,11 +55,10 @@ export default function AllSessionsPage() {
           ]}
         />
       }
-      splitPanel={<FeedbackPanel selectedFeedback={feedback}/>}
       content={
-        <ContentLayout header={<Header variant="h1">View Feedback</Header>}>
+        <ContentLayout header={<Header variant="h1">View All Sessions</Header>}>
           <SpaceBetween size="l">
-                <FeedbackTab updateSelectedFeedback={setFeedback}/>
+                <AllSessionsTab updateSelectedSession={setSession}/>
           </SpaceBetween>
         </ContentLayout>
       }
