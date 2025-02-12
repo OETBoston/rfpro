@@ -64,10 +64,10 @@ export class UserFeedbackClient {
 
   }
 
-  async getUserFeedback(topic: string, startTime?: string, endTime?: string, nextPageToken?: string) {
+  async getUserFeedback(topic: string, startTime?: string, endTime?: string) {
 
     const auth = await Utils.authenticate();
-    let params = new URLSearchParams({ topic, startTime, endTime, nextPageToken });
+    let params = new URLSearchParams({ topic, startTime, endTime });
 
     /** If the parameters are undefined, we don't want those being passed to the API, so 
      * this will delete any undefined parameters if needed. Admittedly, the API should handle this
