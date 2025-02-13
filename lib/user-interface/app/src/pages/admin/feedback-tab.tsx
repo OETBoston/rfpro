@@ -46,12 +46,12 @@ export default function FeedbackTab(props: FeedbackTabProps) {
     startDate: (new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 1)).toISOString().split("T")[0],
     endDate: (new Date()).toISOString().split("T")[0]
   });
-  const [preferences, setPreferences] = useState({ pageSize: 20 });
+  const [preferences, setPreferences] = useState({ pageSize: 10 });
   const { addNotification, removeNotification } = useNotifications();
 
   /** Theoretically handles pagination but I think it works without this actually */
   const { items, collectionProps, paginationProps } = useCollection(
-    pages, {
+    [...pages], {
     filtering: {
       empty: (
         <Box margin={{ vertical: "xs" }} textAlign="center" color="inherit">
@@ -61,7 +61,7 @@ export default function FeedbackTab(props: FeedbackTabProps) {
         </Box>
       ),
     },
-    pagination: { pageSize: preferences.pageSize },
+      pagination: { pageSize: preferences.pageSize },
     sorting: {
       defaultState: {
         sortingColumn: {
@@ -81,10 +81,17 @@ export default function FeedbackTab(props: FeedbackTabProps) {
     async () => {
       setLoading(true);
       try {
-        const result = await apiClient.userFeedback.getUserFeedback(selectedOption.value, value.startDate + "T00:00:00", value.endDate + "T23:59:59")
-        console.log("Testing getuserfeedback function: ")
+        const result = await apiClient.userFeedback.getUserFeedback(
+          selectedOption.value,
+          value.startDate + "T00:00:00",
+          value.endDate + "T23:59:59"
+        );
+
+        console.log("Testing getuserfeedback function: ");
         console.log(result.Items);
-        setPages(result.Items);
+
+        setPages([...result.Items]);  // Ensure state update is recognized
+        setCurrentPageIndex(1);       // Reset pagination when data changes
       } catch (error) {
         console.error(Utils.getErrorMessage(error));
       }
@@ -103,6 +110,13 @@ export default function FeedbackTab(props: FeedbackTabProps) {
     console.log("needs refresh!")
     getFeedback();
   }, [getFeedback]);
+
+  useEffect(() => {
+    console.log("🔍 Updated preferences.pageSize:", preferences.pageSize);
+    console.log("🔍 Total items in pages:", pages.length);
+    console.log("🔍 Items currently displayed:", items.length);
+    console.log("🔍 Pagination props:", paginationProps);
+  }, [preferences.pageSize, pages, paginationProps, items]);
 
 
   /** Handles page refreshes */
@@ -175,7 +189,7 @@ export default function FeedbackTab(props: FeedbackTabProps) {
           preferences={
             <CollectionPreferences
               onConfirm={({ detail }) =>
-                setPreferences({ pageSize: detail.pageSize ?? 20 })
+                setPreferences({ pageSize: detail.pageSize ?? 10 })
               }
               title="Preferences"
               confirmLabel="Confirm"
