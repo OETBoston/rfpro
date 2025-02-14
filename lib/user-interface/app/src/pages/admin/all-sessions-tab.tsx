@@ -11,6 +11,7 @@ import {
   DateRangePickerProps,
   CollectionPreferences,
 } from "@cloudscape-design/components";
+import { Auth } from "aws-amplify";
 import { I18nProvider } from '@cloudscape-design/components/i18n';
 import messages from '@cloudscape-design/components/i18n/messages/all.all';
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -49,11 +50,11 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
     startDate: (new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 1)).toISOString().split("T")[0],
     endDate: (new Date()).toISOString().split("T")[0]
   });
-  const [preferences, setPreferences] = useState({ pageSize: 20 });
+  const [preferences, setPreferences] = useState({ pageSize: 10 });
   const { addNotification, removeNotification } = useNotifications();
 
   const { items, collectionProps, paginationProps } = useCollection(
-    pages, 
+    [...pages], 
     {
       filtering: {
         empty: (
@@ -80,10 +81,14 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
   const getAllSessions = useCallback(
     async () => {
       setLoading(true);
+      let username;
+      await Auth.currentAuthenticatedUser().then((value) => username = value.username);
+      if (!username) return;  
       try {
-        const result = await apiClient.sessions.getAllSessions(value.startDate + "T00:00:00", value.endDate + "T23:59:59", selectedOption.value, hasReviewed.value)
+        const result = await apiClient.sessions.getAllSessions(value.startDate + "T00:00:00", value.endDate + "T23:59:59", selectedOption.value, hasReviewed.value, username)
         needsRefresh.current = false;
-        setPages(result);
+        setPages([...result]);
+        setCurrentPageIndex(1);
       } catch (error) {
         console.log(error);
         console.error(Utils.getErrorMessage(error));
@@ -109,6 +114,35 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
     await getAllSessions();
   };
 
+  const updateSelectedReview = async () => {
+    if (!appContext) return;
+    setLoading(true);
+    let username;
+    await Auth.currentAuthenticatedUser().then((value) => username = value.username);
+    if (!username) return;
+    const apiClient = new ApiClient(appContext);
+    await Promise.all(
+      selectedItems.map((s) => apiClient.sessions.updateReview(s.review_id, s.session_id, username, true))
+    );
+    await getAllSessions();
+    setSelectedItems([])
+    setLoading(false);
+  };
+
+  const deleteSelectedReview = async () => {
+    if (!appContext) return;
+    setLoading(true);
+    let username;
+    await Auth.currentAuthenticatedUser().then((value) => username = value.username);
+    if (!username) return;
+    const apiClient = new ApiClient(appContext);
+    await Promise.all(
+      selectedItems.map((s) => apiClient.sessions.updateReview(s.review_id, s.session_id, username, false))
+    );
+    await getAllSessions();
+    setSelectedItems([])
+    setLoading(false);
+  };
 
   const columnDefinitions = getColumnDefinition("session");
 
@@ -136,7 +170,7 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
           preferences={
             <CollectionPreferences
               onConfirm={({ detail }) =>
-                setPreferences({ pageSize: detail.pageSize ?? 20 })
+                setPreferences({ pageSize: detail.pageSize ?? 10 })
               }
               title="Preferences"
               confirmLabel="Confirm"
@@ -252,23 +286,14 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
                   <Button iconName="refresh" onClick={(event) => refreshPage()} />
                   {/* TODO: No Lambda functionality for downloading session data */}
                   <Button
+                    disabled
                     variant="primary"
-                    onClick={() => {
-                      apiClient.userFeedback.downloadFeedback(selectedOption.value, value.startDate+"T00:00:00", value.endDate+"T23:59:59");
-                      const id = addNotification("success", "Your files have been downloaded.")
-                      Utils.delay(3000).then(() => removeNotification(id));
-                    }}
+                    // onClick={() => {
+                    //   apiClient.userFeedback.downloadFeedback(selectedOption.value, value.startDate+"T00:00:00", value.endDate+"T23:59:59");
+                    //   const id = addNotification("success", "Your files have been downloaded.")
+                    //   Utils.delay(3000).then(() => removeNotification(id));
+                    // }}
                   >Download All</Button>
-                  {/* No Lambda functionality for deleting session data 
-                  <Button
-                    variant="primary"
-                    disabled={selectedItems.length == 0}
-                    onClick={() => {
-                      if (selectedItems.length > 0) setShowModalDelete(true);
-                    }}
-                    data-testid="submit">
-                    Delete
-                  </Button> */}
                 </SpaceBetween>
               }
               description="Please expect a delay for your changes to be reflected. Press the refresh button to see the latest changes."
@@ -276,6 +301,35 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
               {"All Sessions"}
 
             </Header>
+          }
+          filter={
+            <div>
+              <Box float="right">
+                <SpaceBetween direction="horizontal" size="xs">
+                  <Button 
+                    variant="primary"
+                    onClick={() => {
+                      console.log("set status to reviewed");
+                      console.log(selectedItems);
+                      updateSelectedReview();
+                    }}
+                  >
+                    Mark Reviewed
+                  </Button>
+                    
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      console.log("set status to unreviewed");
+                      console.log(selectedItems);
+                      deleteSelectedReview();
+                    }}
+                  >
+                    Mark Unreviewed
+                  </Button>
+                </SpaceBetween>
+              </Box>
+            </div>
           }
           empty={
             <Box textAlign="center">No sessions available</Box>

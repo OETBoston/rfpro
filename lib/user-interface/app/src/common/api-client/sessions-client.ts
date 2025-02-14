@@ -68,6 +68,9 @@ export class SessionsClient {
     const auth = await Utils.authenticate();
     let validData = false;
     let output;
+    let responseUserId;       // Adding new properties to chathistory object 
+    let responseTitle;        // Allows admin to see user ID, title, timestamp
+    let responseCreatedAt;
     let runs = 0;
     let limit = 3;
     let errorMessage = "Could not load session";
@@ -112,7 +115,11 @@ export class SessionsClient {
       const decoder = new TextDecoder('utf-8');
       const decoded = decoder.decode(received);
       try {
-        output = JSON.parse(decoded).chat_history! as any[];
+        const decodedJson = JSON.parse(decoded);
+        output = decodedJson.chat_history! as any[];
+        responseUserId = decodedJson.user_id as string;
+        responseTitle = decodedJson.title as string;
+        responseCreatedAt = decodedJson.created_at as string;
         validData = true;
       } catch (e) {
         console.log(e);
@@ -133,18 +140,28 @@ export class SessionsClient {
       }
       /** Add message ID to ChatBotHistoryItem so that the feedback 
        * handler Lambda function can add user feedback to message in DynamoDB.
-       * Human and AI messages have same message ID. */
+       * Human and AI messages have same message ID. 
+       * Add user feedback to chat history. API will return feedback if user is an admin
+       * */
       history.push({
         type: ChatBotMessageType.Human,
         content: value.user,
         metadata: {},
-        messageId: value.messageId
+        messageId: value.messageId,
+        userFeedback: {},
+        userId: responseUserId,
+        title: responseTitle,
+        createdAt: responseCreatedAt,
       },
       {
         type: ChatBotMessageType.AI,
         content: value.chatbot,
         metadata: metadata,
-        messageId: value.messageId
+        messageId: value.messageId,
+        userFeedback: value.userFeedback,
+        userId: responseUserId,
+        title: responseTitle,
+        createdAt: responseCreatedAt,
       },)
     })
     return history;
@@ -176,7 +193,7 @@ export class SessionsClient {
 
   // Gets all sessions for admin review
   // Return format: [{"session_id" : "string", "user_id" : "string", "time_stamp" : "dd/mm/yy", "title" : "string"}...]
-  async getAllSessions(startTime: string, endTime: string, hasFeedback: string, hasReview: string) {
+  async getAllSessions(startTime: string, endTime: string, hasFeedback: string, hasReview: string, userId: string) {
     const auth = await Utils.authenticate();
     let validData = false;
     let output = [];
@@ -197,7 +214,61 @@ export class SessionsClient {
           "end_time": endTime,
           "has_feedback": hasFeedback,
           "has_review": hasReview,
+          "user_id": userId,
         })
+      });
+      if (response.status != 200) {
+        validData = false;
+        let jsonResponse = await response.json()        
+        errorMessage = jsonResponse;        
+        break;
+      }      
+      try {
+        output = await response.json();
+        validData = true;
+      } catch (e) {
+        // just retry, we get 3 attempts!
+        console.log(e);
+      }
+    }
+    if (!validData) {
+      throw new Error(errorMessage);
+    }
+    // console.log(output);
+    return output;
+  }
+
+  // Creates, updates, or removes a review by an admin
+  // Return format: [{"review_id": "string", "session_id" : "string", "user_id" : "string"]
+  async updateReview(reviewId: string, sessionId: string, userId: string, update: boolean) {
+    const auth = await Utils.authenticate();
+    let validData = false;
+    let output = [];
+    let runs = 0;
+    let limit = 3;
+    let errorMessage = "Could not load sessions"
+    while (!validData && runs < limit) {
+      runs += 1;
+      const response = await fetch(this.API + '/user-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + auth,
+        },
+        body: JSON.stringify(update ?
+          {
+            "operation": "update_review_session",
+            "review_id": reviewId,
+            "session_id": sessionId,
+            "user_id": userId,
+          } :
+          {
+            "operation": "delete_review_session",
+            "review_id": reviewId,
+            "session_id": sessionId,
+            "user_id": userId,
+          }
+        )
       });
       if (response.status != 200) {
         validData = false;

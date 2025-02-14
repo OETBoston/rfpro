@@ -2,6 +2,7 @@ import { AdminDataType } from "../../common/types";
 import { DateTime } from "luxon";
 import { Utils } from "../../common/utils";
 import { Link } from "react-router-dom";
+import TextContent from "@cloudscape-design/components/text-content";
 
 const FILES_COLUMN_DEFINITIONS = [
   {
@@ -67,9 +68,9 @@ const SESSION_COLUMN_DEFINITIONS = [
     header: "DATE",
     sortingField: "time_stamp",
     cell: (item) =>
-      DateTime.fromISO(new Date(item.time_stamp).toISOString()).toLocaleString(
-        DateTime.DATETIME_SHORT
-      ),
+      item.has_review === "No"? 
+        <strong> {DateTime.fromISO(new Date(item.time_stamp).toISOString()).toLocaleString(DateTime.DATETIME_SHORT)} </strong>:
+        DateTime.fromISO(new Date(item.time_stamp).toISOString()).toLocaleString(DateTime.DATETIME_SHORT),
   },
   {
     id: "title",
@@ -78,14 +79,18 @@ const SESSION_COLUMN_DEFINITIONS = [
     width: 600,
     minWidth: 200,
     // cell: (item) => item.FeedbackType,
-    cell: (item) => (<Link to={`/chatbot/playground/${item.session_id}`}>{item.title}</Link>),
+    cell: (item) => item.has_review === "No"? 
+      <strong> <Link to={`/chatbot/playground/${item.session_id}`}>{item.title}</Link></strong>:
+      <Link to={`/chatbot/playground/${item.session_id}`}>{item.title}</Link>,
     isRowHeader: true,
   },
   {
     id: "has_feedback",
     header: "HAS FEEDBACK",
     sortingField: "has_feedback",
-    cell: (item) => item.has_feedback,
+    cell: (item) => item.has_review === "No"?
+      <strong> {item.has_feedback} </strong>:
+      item.has_feedback,
     isRowHeader: true,
   },
 ];

@@ -173,8 +173,15 @@ def get_feedback(event):
         start_time = query_params.get('startTime')
         end_time = query_params.get('endTime')
         topic = query_params.get('topic')
+
+        filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
+        if topic in {"Positive", "Negative"}:
+            filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').eq(topic.lower())
+        elif topic in {"Error Messages", "Not Clear", "Poorly Formatted", "Inaccurate", "Not Relevant to My Question", "Other"}:
+            filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_category').eq(topic)
+
         response = messages_table.scan(
-            FilterExpression=Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
+            FilterExpression=filter_expression
         )
         items = response.get('Items', [])
 
