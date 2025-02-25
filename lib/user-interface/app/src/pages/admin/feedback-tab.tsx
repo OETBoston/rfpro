@@ -209,6 +209,11 @@ export default function FeedbackTab(props: FeedbackTabProps) {
             <Header
               actions={
                 <SpaceBetween direction="horizontal" size="xs">
+                  <Button 
+                    variant="primary"
+                    onClick={(event) => refreshPage()}>
+                      Update Data
+                  </Button>
                   <DateRangePicker
                     onChange={({ detail }) => {
                       /** If the date changes, refresh all of the feedback. This
@@ -292,7 +297,7 @@ export default function FeedbackTab(props: FeedbackTabProps) {
                     placeholder="Choose a category"
                     options={[{label : "All Feedback", value: "any", disabled: false}, ...feedbackCategories]}
                   />
-                  <Button iconName="refresh" onClick={(event) => refreshPage()} />
+                  {/* <Button iconName="refresh" onClick={(event) => refreshPage()} /> */}
                   <Button
                     variant="primary"
                     onClick={() => {

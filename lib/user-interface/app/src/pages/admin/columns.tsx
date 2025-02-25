@@ -1,7 +1,7 @@
 import { AdminDataType } from "../../common/types";
 import { DateTime } from "luxon";
 import { Utils } from "../../common/utils";
-import { Link } from "react-router-dom";
+import { Link } from "@cloudscape-design/components";
 import TextContent from "@cloudscape-design/components/text-content";
 
 const FILES_COLUMN_DEFINITIONS = [
@@ -38,7 +38,7 @@ const FEEDBACK_COLUMN_DEFINITIONS = [
   {
     id: "feedbackType",
     header: "SENTIMENT",
-    cell: (item) => item.FeedbackType,
+    cell: (item) => <Link href={`/chatbot/playground/${item.SessionID}`}>{item.FeedbackType}</Link>,
     isRowHeader: true,
   },
   {
@@ -80,8 +80,8 @@ const SESSION_COLUMN_DEFINITIONS = [
     minWidth: 200,
     // cell: (item) => item.FeedbackType,
     cell: (item) => item.has_review === "No"? 
-      <strong> <Link to={`/chatbot/playground/${item.session_id}`}>{item.title}</Link></strong>:
-      <Link to={`/chatbot/playground/${item.session_id}`}>{item.title}</Link>,
+      <strong> <Link href={`/chatbot/playground/${item.session_id}`}>{item.title}</Link></strong>:
+      <Link href={`/chatbot/playground/${item.session_id}`}>{item.title}</Link>,
     isRowHeader: true,
   },
   {

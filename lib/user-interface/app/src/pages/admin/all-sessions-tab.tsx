@@ -10,6 +10,7 @@ import {
   Select,
   DateRangePickerProps,
   CollectionPreferences,
+  Link
 } from "@cloudscape-design/components";
 import { Auth } from "aws-amplify";
 import { I18nProvider } from '@cloudscape-design/components/i18n';
@@ -22,6 +23,7 @@ import { Utils } from "../../common/utils";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import React from 'react';
 import { useNotifications } from "../../components/notif-manager";
+import { DateTime } from "luxon";
 
 export interface AllSessionsTabProps {
   updateSelectedSession: React.Dispatch<any>;
@@ -40,11 +42,11 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
   const [
     selectedOption,
     setSelectedOption
-  ] = React.useState({ label: "All Feedback", value: "any" });
+  ] = React.useState({ label: "All Feedback Statuses", value: "any" });
   const [
     hasReviewed,
     setHasReviewed
-  ] = React.useState({ label: "All Reviews", value: "any" });
+  ] = React.useState({ label: "All Review Statuses", value: "any" });
   const [value, setValue] = React.useState<DateRangePickerProps.AbsoluteValue>({
     type: "absolute",
     startDate: (new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 1)).toISOString().split("T")[0],
@@ -114,37 +116,59 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
     await getAllSessions();
   };
 
-  const updateSelectedReview = async () => {
+  // If isReviewed is set to true, add a review element to the DynamoDB table, if false then remove it
+  const updateSelectedReview = async (isReviewed: boolean, review_id?: string, session_id?: string) => {
     if (!appContext) return;
     setLoading(true);
     let username;
     await Auth.currentAuthenticatedUser().then((value) => username = value.username);
     if (!username) return;
     const apiClient = new ApiClient(appContext);
+
+    if (session_id) {
+      await apiClient.sessions.updateReview(review_id, session_id, username, isReviewed);
+    } else {
     await Promise.all(
-      selectedItems.map((s) => apiClient.sessions.updateReview(s.review_id, s.session_id, username, true))
-    );
+      selectedItems.map((s) => apiClient.sessions.updateReview(s.review_id, s.session_id, username, isReviewed))
+    );}
     await getAllSessions();
     setSelectedItems([])
     setLoading(false);
   };
 
-  const deleteSelectedReview = async () => {
-    if (!appContext) return;
-    setLoading(true);
-    let username;
-    await Auth.currentAuthenticatedUser().then((value) => username = value.username);
-    if (!username) return;
-    const apiClient = new ApiClient(appContext);
-    await Promise.all(
-      selectedItems.map((s) => apiClient.sessions.updateReview(s.review_id, s.session_id, username, false))
-    );
-    await getAllSessions();
-    setSelectedItems([])
-    setLoading(false);
-  };
 
-  const columnDefinitions = getColumnDefinition("session");
+  const columnDefinitions = [
+    {
+      id: "time_stamp",
+      header: "DATE",
+      sortingField: "time_stamp",
+      cell: (item) =>
+        item.has_review === "No"? 
+          <strong> {DateTime.fromISO(new Date(item.time_stamp).toISOString()).toLocaleString(DateTime.DATETIME_SHORT)} </strong>:
+          DateTime.fromISO(new Date(item.time_stamp).toISOString()).toLocaleString(DateTime.DATETIME_SHORT),
+    },
+    {
+      id: "title",
+      header: "TITLE",
+      sortingField: "title",
+      width: 600,
+      minWidth: 200,
+      // cell: (item) => item.FeedbackType,
+      cell: (item) => item.has_review === "No"? 
+        <strong> <Link href={`/chatbot/playground/${item.session_id}`} onFollow={() => updateSelectedReview(true, item.review_id, item.session_id)}>{item.title}</Link></strong>:
+        <Link href={`/chatbot/playground/${item.session_id}`}>{item.title}</Link>,
+      isRowHeader: true,
+    },
+    {
+      id: "has_feedback",
+      header: "HAS FEEDBACK",
+      sortingField: "has_feedback",
+      cell: (item) => item.has_review === "No"?
+        <strong> {item.has_feedback} </strong>:
+        item.has_feedback,
+      isRowHeader: true,
+    },
+  ];
 
   console.log("Pagination props");
   console.log(paginationProps);
@@ -190,6 +214,11 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
             <Header
               actions={
                 <SpaceBetween direction="horizontal" size="xs">
+                  <Button 
+                    variant="primary"
+                    onClick={(event) => refreshPage()}>
+                      Update Data
+                  </Button>
                   <DateRangePicker
                     onChange={({ detail }) => {
                       /** If the date changes, refresh all of the feedback. This
@@ -271,7 +300,7 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
                       setSelectedOption({ label: detail.selectedOption.label!, value: detail.selectedOption.value });
                     }}
                     placeholder="Select Status"
-                    options={[{label : "All Feedback", value: "any", disabled: false}, {label : "Yes", value: "yes", disabled: false}, {label : "No", value: "no", disabled: false}]}
+                    options={[{label : "All Feedback Statuses", value: "any", disabled: false}, {label : "Yes", value: "yes", disabled: false}, {label : "No", value: "no", disabled: false}]}
                   />
                   <Select
                     selectedOption={hasReviewed}
@@ -281,9 +310,9 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
                       setHasReviewed({ label: detail.selectedOption.label!, value: detail.selectedOption.value });
                     }}
                     placeholder="Select Status"
-                    options={[{label : "All Reviews", value: "any", disabled: false}, {label : "Yes", value: "yes", disabled: false}, {label : "No", value: "no", disabled: false}]}
+                    options={[{label : "All Review Statuses", value: "any", disabled: false}, {label : "Yes", value: "yes", disabled: false}, {label : "No", value: "no", disabled: false}]}
                   />
-                  <Button iconName="refresh" onClick={(event) => refreshPage()} />
+                  {/* <Button iconName="refresh" onClick={(event) => refreshPage()} /> */}
                   {/* TODO: No Lambda functionality for downloading session data */}
                   <Button
                     disabled
@@ -311,7 +340,7 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
                     onClick={() => {
                       console.log("set status to reviewed");
                       console.log(selectedItems);
-                      updateSelectedReview();
+                      updateSelectedReview(true); 
                     }}
                   >
                     Mark Reviewed
@@ -322,7 +351,7 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
                     onClick={() => {
                       console.log("set status to unreviewed");
                       console.log(selectedItems);
-                      deleteSelectedReview();
+                      updateSelectedReview(false);
                     }}
                   >
                     Mark Unreviewed

@@ -98,7 +98,7 @@ export default function Chat(props: { sessionId?: string}) {
   const parseTitle = (title: string, timestamp: string, userId: string) => {
     const dateObject = new Date(timestamp);
     const dateString = dateObject.toLocaleDateString("en-US", {hour: "numeric", minute: "numeric"});
-    return `${title} | ${dateString} | User ID:${userId}`;
+    return `${title} | ${dateString} | User ID: ${userId}`;
   }
 
   /** Adds some metadata to the user's feedback */
