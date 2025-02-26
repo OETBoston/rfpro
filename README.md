@@ -5,7 +5,7 @@
 
 2. **Overview**
    - [Introduction to AWS CDK](#overview)
-   - [Deployed AWS Services](#overview)
+   - [Architecture Diagram](#architecture-diagram)
 
 3. **Detailed AWS Services Summary**
    - [Amazon S3](#aws-services-summary)
@@ -63,6 +63,10 @@ AWS Cloud Development Kit (CDK) is a framework that allows you to define cloud i
 Our current CDK script deploys a suite of AWS services tailored to support Boston's Department of Innovation and Technology's procurement process. By integrating this tool into everyday workflows, the procurement team at the City of Boston are able to much more efficiently and accurately follow procurement guidelines and complete action items, in turn enhancing all departments' ability to better serve constituents.
 
 This tool may also be customized to meet various GenAI needs. In cooperation with the Burnes Center of Social Change, where this tool's prototype was initially developed, many departments within the State of Massachusetts also decided to adopt it in both internal and constituent facing trials. 
+
+## Architecture Diagram
+
+Please find the architecture diagram in [Miro](https://miro.com/welcomeonboard/dmdPWE1BRlZnYzFqSzM0ZTVFbytiRzFQb29hbWdDbU1JbVBtb21BZTVOdEFOeWRyQTM5cmpQZzhDdnFSOXdBbVM1UTNNdE5tUlcrbDdpOGZxME5YL1lGZVB5T3ZMdzRMUzZzcWQ5cW0wdHZEYmI2UVBwMGp5cDFnUHpsYlNXY1F0R2lncW1vRmFBVnlLcVJzTmdFdlNRPT0hdjE=?share_link_id=555024095209). Access is limited to members of the **CoB DoIT** team. Please reach out to your product manager internally if you don't have access.
 
 ## AWS Services Summary
 
