@@ -125,12 +125,16 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
     if (!username) return;
     const apiClient = new ApiClient(appContext);
 
-    if (session_id) {
+    // If session ID is provided, then this is invoked by the Link onFollow event 
+    if (session_id) { 
       await apiClient.sessions.updateReview(review_id, session_id, username, isReviewed);
-    } else {
-    await Promise.all(
-      selectedItems.map((s) => apiClient.sessions.updateReview(s.review_id, s.session_id, username, isReviewed))
-    );}
+    } 
+    // If not, then this is triggered by the buttons and the list needs to be refreshed
+    else {
+      await Promise.all(
+        selectedItems.map((s) => apiClient.sessions.updateReview(s.review_id, s.session_id, username, isReviewed))
+      );
+    }
     await getAllSessions();
     setSelectedItems([])
     setLoading(false);
@@ -153,10 +157,9 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
       sortingField: "title",
       width: 600,
       minWidth: 200,
-      // cell: (item) => item.FeedbackType,
       cell: (item) => item.has_review === "No"? 
-        <strong> <Link href={`/chatbot/playground/${item.session_id}`} onFollow={() => updateSelectedReview(true, item.review_id, item.session_id)}>{item.title}</Link></strong>:
-        <Link href={`/chatbot/playground/${item.session_id}`}>{item.title}</Link>,
+        <strong> <Link href="#" variant="secondary" onFollow={async(e) => {e.preventDefault(); await updateSelectedReview(true, item.review_id, item.session_id); window.location.href=`/chatbot/playground/${item.session_id}`}}>{item.title}</Link></strong>:
+        <Link variant="secondary" href={`/chatbot/playground/${item.session_id}`}>{item.title}</Link>,
       isRowHeader: true,
     },
     {

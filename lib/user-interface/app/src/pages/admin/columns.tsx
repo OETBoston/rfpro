@@ -38,7 +38,7 @@ const FEEDBACK_COLUMN_DEFINITIONS = [
   {
     id: "feedbackType",
     header: "SENTIMENT",
-    cell: (item) => <Link href={`/chatbot/playground/${item.SessionID}`}>{item.FeedbackType}</Link>,
+    cell: (item) => <Link href={`/chatbot/playground/${item.SessionID}`} variant="secondary">{item.FeedbackType}</Link>,
     isRowHeader: true,
   },
   {
