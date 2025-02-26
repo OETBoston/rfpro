@@ -105,8 +105,8 @@ export default function NavigationPanel() {
         type: "section",
         text: "Admin",
         items: [
-          { type: "link", text: "Data", href: "/admin/data" },
-          { type: "link", text: "User Feedback", href: "/admin/user-feedback" },
+          { type: "link", text: "Documents", href: "/admin/data" },
+          { type: "link", text: "Message Feedback", href: "/admin/user-feedback" },
           { type: "link", text: "All Sessions", href: "/admin/all-sessions" }
         ],
       },)

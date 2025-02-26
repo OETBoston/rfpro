@@ -30,6 +30,10 @@ export interface ChatBotHistoryItem {
     | string[]
     | string[][]
   >;
+  userFeedback: Record<string, string>;
+  userId: string;
+  title: string;
+  createdAt: string;
 }
 
 // Renaming variables and changing types to match new feedback schema

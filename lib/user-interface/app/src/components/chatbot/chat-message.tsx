@@ -65,6 +65,8 @@ export default function ChatMessage(props: ChatMessageProps) {
     setSelectedIssue(null);
     setSelectedRankValue(null);
     setFeedbackMessage("");
+    console.log("user feedback");
+    console.log(formatUserFeedback(props.message));
   };
 
   const handleRadioChange = (event) => {
@@ -83,7 +85,14 @@ export default function ChatMessage(props: ChatMessageProps) {
 
   const showSources = props.message.metadata?.Sources && (props.message.metadata.Sources as any[]).length > 0;
   
-
+  const formatUserFeedback = (message) => {
+    const userFeedbackType = message.userFeedback?.feedbackType ? message.userFeedback.feedbackType: "N/A";
+    const userFeedbackCategory = message.userFeedback?.feedbackCategory ? " -- " + message.userFeedback.feedbackCategory: "";
+    const userFeedbackRank = message.userFeedback?.feedbackRank ? " (" + message.userFeedback.feedbackRank + "/5)": "";
+    const userFeedbackMessage = message.userFeedback?.feedbackMessage ? ": " + message.userFeedback.feedbackMessage: "";
+    return "#### USER COMMENT:\n```\n" + userFeedbackType + userFeedbackCategory + userFeedbackRank + userFeedbackMessage + "\n```";
+  };
+  
   return (
     <div>
       <Modal
@@ -296,6 +305,44 @@ export default function ChatMessage(props: ChatMessageProps) {
               />
             )}
           </div>
+          {isAdmin && (<ReactMarkdown
+            children={formatUserFeedback(props.message)}
+            remarkPlugins={[remarkGfm]}
+            components={{
+              pre(props) {
+                const { children, ...rest } = props;
+                return (
+                  <pre {...rest} className={styles.markdownContainer}>
+                    {children}
+                  </pre>
+                );
+              },
+              table(props) {
+                const { children, ...rest } = props;
+                return (
+                  <table {...rest} className={styles.markdownTable}>
+                    {children}
+                  </table>
+                );
+              },
+              th(props) {
+                const { children, ...rest } = props;
+                return (
+                  <th {...rest} className={styles.markdownTableCell}>
+                    {children}
+                  </th>
+                );
+              },
+              td(props) {
+                const { children, ...rest } = props;
+                return (
+                  <td {...rest} className={styles.markdownTableCell}>
+                    {children}
+                  </td>
+                );
+              },
+            }}
+          />)}
         </Container>
       )}
       {loading && (

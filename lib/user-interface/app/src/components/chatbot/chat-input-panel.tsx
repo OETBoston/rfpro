@@ -162,12 +162,20 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           metadata: {            
           },
           messageId: "",
+          userFeedback: {},
+          userId: "",
+          title: "",
+          createdAt: "",
         },
         {
           type: ChatBotMessageType.AI,          
           content: receivedData,
           metadata: {},
           messageId: "",
+          userFeedback: {},
+          userId: "",
+          title: "",
+          createdAt: "",
         },
       ];
       props.setMessageHistory(messageHistoryRef.current);
@@ -199,6 +207,10 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           content: `Sorry, I had a bit of trouble processing that question, please type it again in the search bar. I'll try my best to help you with your questions.`,
           metadata: {},
           messageId: "",
+          userFeedback: {},
+          userId: "",
+          title: "",
+          createdAt: "",
         })
       }},60000)
 
@@ -262,7 +274,15 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           console.log(sources);
         }
 
-        // Update the chat history state with the new message        
+        let messageId = "";
+        const receivedDataSplit = receivedData.split("<!MessageId!>:");
+        // Parse streamed data for message Id at the end
+        if (receivedData.includes("<!MessageId!>:")){
+          messageId = receivedDataSplit[1].trim();
+          console.log("Received Message Id: ");
+          console.log(messageId);
+        }
+        // Update the chat history state with the new message      
         messageHistoryRef.current = [
           ...messageHistoryRef.current.slice(0, -2),
 
@@ -270,13 +290,21 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
             type: ChatBotMessageType.Human,
             content: messageToSend,
             metadata: {},
-            messageId: "",
+            messageId: messageId,
+            userFeedback: {},
+            userId: "",
+            title: "",
+            createdAt: "",
           },
           {
             type: ChatBotMessageType.AI,            
-            content: receivedData,
+            content: receivedDataSplit[0],
             metadata: sources,
-            messageId: "",
+            messageId: messageId,
+            userFeedback: {},
+            userId: "",
+            title: "",
+            createdAt: "",
           },
         ];        
         props.setMessageHistory(messageHistoryRef.current);        

@@ -148,12 +148,18 @@ def download_feedback(event):
 def get_feedback(event):
     try:
         query_params = event.get('queryStringParameters', {})
-        start_time = query_params.get('startTime')
-        end_time = query_params.get('endTime')
-        
-        # Initialize the response and items list
-        response = None
-        items = []
+        # session_id = query_params.get('session_id')
+        # start_time = query_params.get('startTime') + "T00:00:00"
+        # end_time = query_params.get('endTime') + "T23:59:59"
+
+        # query_kwargs = {
+        #     'IndexName': 'SessionMessagesIndex',
+        #     'KeyConditionExpression': Key('sk_session_id').eq(session_id) & Key('created_at').between(start_time, end_time),
+        #     'FilterExpression': Attr('feedback_type').exists(),
+        #     'ScanIndexForward': False
+        # }
+
+        # response = messages_table.query(**query_kwargs)
 
         """
         Interpretated that this function lists all sessions with the chat bot because the frontend UI 
@@ -164,35 +170,20 @@ def get_feedback(event):
         time attribute already has "T00:00:00" appended
         Updated labels in formatted_feedback
         """
-<<<<<<< Updated upstream
         start_time = query_params.get('startTime')
         end_time = query_params.get('endTime')
         topic = query_params.get('topic')
+
+        filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
+        if topic in {"Positive", "Negative"}:
+            filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').eq(topic.lower())
+        elif topic in {"Error Messages", "Not Clear", "Poorly Formatted", "Inaccurate", "Not Relevant to My Question", "Other"}:
+            filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_category').eq(topic)
+
         response = messages_table.scan(
-            FilterExpression=Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
+            FilterExpression=filter_expression
         )
         items = response.get('Items', [])
-=======
-
-        # Loop to handle pagination
-        while True:
-            # Add ExclusiveStartKey if this is a continuation of a previous query
-            if response and 'LastEvaluatedKey' in response:
-                response = messages_table.scan(
-                    FilterExpression=Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists(),
-                    ExclusiveStartKey=response['LastEvaluatedKey']
-                )
-            else:
-                response = messages_table.scan(
-                    FilterExpression=Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
-                )
-            
-            items.extend(response.get('Items', []))
-
-            # Break if there are no more items to fetch
-            if 'LastEvaluatedKey' not in response:
-                break
->>>>>>> Stashed changes
 
         formatted_feedback = [
             {

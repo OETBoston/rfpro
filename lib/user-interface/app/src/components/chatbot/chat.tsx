@@ -5,7 +5,7 @@ import {
   FeedbackData
 } from "./types";
 import { Auth } from "aws-amplify";
-import { SpaceBetween, StatusIndicator, Alert, Flashbar } from "@cloudscape-design/components";
+import { SpaceBetween, StatusIndicator, Alert, Flashbar, Header, Link, Box } from "@cloudscape-design/components";
 import { v4 as uuidv4 } from "uuid";
 import { AppContext } from "../../common/app-context";
 import { ApiClient } from "../../common/api-client/api-client";
@@ -14,9 +14,11 @@ import ChatInputPanel, { ChatScrollState } from "./chat-input-panel";
 import styles from "../../styles/chat.module.scss";
 import { CHATBOT_NAME } from "../../common/constants";
 import { useNotifications } from "../notif-manager";
+import { useAdmin } from "../../common/admin-context.js";
 
 export default function Chat(props: { sessionId?: string}) {
   const appContext = useContext(AppContext);
+  const isAdmin = useAdmin();
   const [running, setRunning] = useState<boolean>(true);
   const [session, setSession] = useState<{ id: string; loading: boolean }>({
     id: props.sessionId ?? uuidv4(),
@@ -28,6 +30,7 @@ export default function Chat(props: { sessionId?: string}) {
   const [messageHistory, setMessageHistory] = useState<ChatBotHistoryItem[]>(
     []
   );
+  const [title, setTitle] = useState<string>("");
   
   /** Loads session history */
   useEffect(() => {
@@ -53,7 +56,6 @@ export default function Chat(props: { sessionId?: string}) {
         await Auth.currentAuthenticatedUser().then((value) => username = value.username);
         if (!username) return;
         const hist = await apiClient.sessions.getSession(props.sessionId,username);
-
         if (hist) {
           
           ChatScrollState.skipNextHistoryUpdate = true;
@@ -68,6 +70,10 @@ export default function Chat(props: { sessionId?: string}) {
                 metadata: x!.metadata!,
                 content: x!.content,
                 messageId: x!.messageId,
+                userFeedback: x!.userFeedback,
+                userId: x!.userId,
+                title: x!.title,
+                createdAt: x!.createdAt,
               }))
           );
 
@@ -77,6 +83,9 @@ export default function Chat(props: { sessionId?: string}) {
           });
         }
         setSession({ id: props.sessionId, loading: false });
+        if (hist.length > 1){
+          setTitle(parseTitle(hist[0].title, hist[0].createdAt, hist[0].userId));
+        }
         setRunning(false);
       } catch (error) {
         console.log(error);
@@ -85,6 +94,12 @@ export default function Chat(props: { sessionId?: string}) {
       }
     })();
   }, [appContext, props.sessionId]);
+
+  const parseTitle = (title: string, timestamp: string, userId: string) => {
+    const dateObject = new Date(timestamp);
+    const dateString = dateObject.toLocaleDateString("en-US", {hour: "numeric", minute: "numeric"});
+    return `${title} | ${dateString} | User ID: ${userId}`;
+  }
 
   /** Adds some metadata to the user's feedback */
   const handleFeedback = (feedbackType: "positive" | "negative", idx: number, message: ChatBotHistoryItem, feedbackCategory? : string, feedbackRank? : number, feedbackMessage? : string) => {
@@ -121,13 +136,20 @@ export default function Chat(props: { sessionId?: string}) {
     <div className={styles.chat_container}> 
       <SpaceBetween direction="vertical" size="m">
         
-      {messageHistory.length == 0 && !session?.loading && (
-       <Alert
-          statusIconAriaLabel="Info"
-          header=""
-       >
-        AI Models can make mistakes. Be mindful in validating important information. During the pilot, the tool will also capture your responses to ensure that it is giving accurate information.
-      </Alert> )}
+        {messageHistory.length == 0 && !session?.loading && (
+        <Alert
+            statusIconAriaLabel="Info"
+            header=""
+        >
+          AI Models can make mistakes. Be mindful in validating important information. During the pilot, the tool will also capture your responses to ensure that it is giving accurate information.
+        </Alert> )}
+
+        
+        {messageHistory.length > 0 && isAdmin && (
+          <Box variant="h1">
+            <Link href="/admin/all-sessions"> <strong>{title}</strong> </Link>
+          </Box>
+        )}
 
       
         {messageHistory.map((message, idx) => (
