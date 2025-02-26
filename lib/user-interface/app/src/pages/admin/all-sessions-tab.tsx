@@ -158,7 +158,7 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
       width: 600,
       minWidth: 200,
       cell: (item) => item.has_review === "No"? 
-        <strong> <Link href="#" variant="secondary" onFollow={async(e) => {e.preventDefault(); await updateSelectedReview(true, item.review_id, item.session_id); window.location.href=`/chatbot/playground/${item.session_id}`}}>{item.title}</Link></strong>:
+        <strong> <Link href={`/chatbot/playground/${item.session_id}`} variant="secondary" onFollow={async(e) => {e.preventDefault(); await updateSelectedReview(true, item.review_id, item.session_id); window.location.href=`/chatbot/playground/${item.session_id}`}}>{item.title}</Link></strong>:
         <Link variant="secondary" href={`/chatbot/playground/${item.session_id}`}>{item.title}</Link>,
       isRowHeader: true,
     },
