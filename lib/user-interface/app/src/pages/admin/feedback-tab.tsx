@@ -43,7 +43,7 @@ export default function FeedbackTab(props: FeedbackTabProps) {
   ] = React.useState({ label: "All Feedback", value: "any" });
   const [value, setValue] = React.useState<DateRangePickerProps.AbsoluteValue>({
     type: "absolute",
-    startDate: (new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 1)).toISOString().split("T")[0],
+    startDate: (new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 90)).toISOString().split("T")[0],
     endDate: (new Date()).toISOString().split("T")[0]
   });
   const [preferences, setPreferences] = useState({ pageSize: 10 });
