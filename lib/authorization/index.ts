@@ -111,7 +111,8 @@ export class AuthorizationStack extends Construct {
         issuerUrl: process.env.COGNITO_OIDC_PROVIDER_ISSUER_URL!,
         attributeMapping: {
           custom: {
-            username: ProviderAttribute.other('sub')
+            username: ProviderAttribute.other('sub'),
+            isMemberOf: ProviderAttribute.other('isMemberOf')
           }
         },
         endpoints: {
