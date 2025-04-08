@@ -260,27 +260,22 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         }
         if (!incomingMetadata) {
           receivedData += data.data;
-        } else {
-          let sourceData = JSON.parse(data.data);
-          sourceData = sourceData.map((item) => {
-            console.log(item)
-            if (item.title == "") {
-              return {title: item.uri.slice((item.uri as string).lastIndexOf("/") + 1), uri: item.uri}
-            } else {
-              return item
-            }
-          })
-          sources = { "Sources": sourceData}
-          console.log(sources);
         }
 
         let messageId = "";
-        const receivedDataSplit = receivedData.split("<!MessageId!>:");
+        let sourceJson = {};
+        let receivedDataSplit = receivedData.split("<!MessageId!>:");
+        let metaDataSplit = [];
         // Parse streamed data for message Id at the end
         if (receivedData.includes("<!MessageId!>:")){
-          messageId = receivedDataSplit[1].trim();
+          metaDataSplit = receivedDataSplit[1].split("<!Sources!>:");
+          messageId = metaDataSplit[0].trim();
           console.log("Received Message Id: ");
           console.log(messageId);
+        }
+        if (receivedData.includes("<!Sources!>:")){
+          let sourceData = JSON.parse(metaDataSplit[1].trim());
+          sourceJson = {"Sources": sourceData}
         }
         // Update the chat history state with the new message      
         messageHistoryRef.current = [
@@ -299,7 +294,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           {
             type: ChatBotMessageType.AI,            
             content: receivedDataSplit[0],
-            metadata: sources,
+            metadata: sourceJson,
             messageId: messageId,
             userFeedback: {},
             userId: "",

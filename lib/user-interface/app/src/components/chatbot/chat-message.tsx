@@ -185,7 +185,7 @@ export default function ChatMessage(props: ChatMessageProps) {
       {props.message?.type === ChatBotMessageType.AI && (
         <Container
           footer={
-            showSources && (
+            (
               <SpaceBetween direction="horizontal" size="s">
               <div
                   onClick={() => {
@@ -196,14 +196,16 @@ export default function ChatMessage(props: ChatMessageProps) {
                     }
                   }}>
                 <ButtonDropdown
-                items={
-                (props.message.metadata.Sources as any[]).map((item) => {
-                  if (isAdmin) {
-                      return { id: "id", disabled: false, text: item.title, href: item.uri, external: true, externalIconAriaLabel: "(opens in new tab)" }
-                    } else {
-                      return { id: "id", disabled: true, text: item.title}
-                    }
-                  })}
+                  items={
+                    (props.message.metadata?.Sources && (props.message.metadata.Sources as any[]).length > 0) ?
+                      (props.message.metadata.Sources as any[]).map((item) => {
+                        if (isAdmin) {
+                          return { id: "id", disabled: false, text: item.title, href: item.uri, external: true, externalIconAriaLabel: "(opens in new tab)" }
+                        } else {
+                          return { id: "id", disabled: true, text: item.title}
+                        }
+                      }) : [{ id: "id", disabled: true, text: "No sources available" }]
+                  }
                 >Sources</ButtonDropdown>
               </div>              
               </SpaceBetween>
