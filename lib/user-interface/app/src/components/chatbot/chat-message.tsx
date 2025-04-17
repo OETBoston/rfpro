@@ -84,7 +84,8 @@ export default function ChatMessage(props: ChatMessageProps) {
       : "";
 
   const showSources = props.message.metadata?.Sources && (props.message.metadata.Sources as any[]).length > 0;
-  
+  const defaultSource = [{ id: "id", disabled: false, text: "Find these in the Finance Academy!", href: "https://sites.google.com/boston.gov/finance-academy/home", external: true, externalIconAriaLabel: "(opens in new tab)" }];
+
   const formatUserFeedback = (message) => {
     const userFeedbackType = message.userFeedback?.feedbackType ? message.userFeedback.feedbackType: "N/A";
     const userFeedbackCategory = message.userFeedback?.feedbackCategory ? " -- " + message.userFeedback.feedbackCategory: "";
@@ -204,7 +205,7 @@ export default function ChatMessage(props: ChatMessageProps) {
                         } else {
                           return { id: "id", disabled: true, text: item.title}
                         }
-                      }) : [{ id: "id", disabled: true, text: "No sources available" }]
+                      }).concat(defaultSource) : defaultSource
                   }
                 >Sources</ButtonDropdown>
               </div>              
