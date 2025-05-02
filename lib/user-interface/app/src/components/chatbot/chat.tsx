@@ -141,7 +141,7 @@ export default function Chat(props: { sessionId?: string}) {
             statusIconAriaLabel="Info"
             header=""
         >
-          AI Models can make mistakes. Be mindful in validating important information. During the pilot, the tool will also capture your responses to ensure that it is giving accurate information.
+          AI Models can make mistakes. Be mindful in validating important information. The tool will capture your responses to ensure that it is giving accurate information, and de-identified questions and responses from only the 5/14/2025 activity will be shared with Harvard researchers for further analysis.
         </Alert> )}
 
         
