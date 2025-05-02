@@ -112,7 +112,7 @@ export class AuthorizationStack extends Construct {
         attributeMapping: {
           custom: {
             username: ProviderAttribute.other('sub'),
-            isMemberOf: ProviderAttribute.other('isMemberOf')
+            isMemberOf: ProviderAttribute.other('custom:isMemberOf')
           }
         },
         endpoints: {

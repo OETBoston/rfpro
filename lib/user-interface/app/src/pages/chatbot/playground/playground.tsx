@@ -12,7 +12,7 @@ export default function Playground() {
       info={
         <HelpPanel header={<Header variant="h3">Using BidBot</Header>}>
           <p>
-          BidBot is a tool you can use to draft better procurements and determine how to proceed in the procurement process. You can write anything you would ask a procurement official, but be sure to <b>talk with a procurement official before releasing any procurement vehicles or if you have any questions about your work.</b> During the pilot of BidBot, all responses will be recorded for review by the Procurement team to ensure the tool is performing as expected.
+          BidBot is a tool you can use to draft better procurements and determine how to proceed in the procurement process. You can write anything you would ask a procurement official, but be sure to <b>talk with a procurement official before releasing any procurement vehicles or if you have any questions about your work.</b> All responses will be recorded for review by the Procurement team to ensure the tool is performing as expected.
           </p>
           <h3>When to Use BidBot</h3>
           <p>
