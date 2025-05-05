@@ -200,11 +200,7 @@ export default function ChatMessage(props: ChatMessageProps) {
                   items={
                     (props.message.metadata?.Sources && (props.message.metadata.Sources as any[]).length > 0) ?
                       (props.message.metadata.Sources as any[]).map((item) => {
-                        if (isAdmin) {
-                          return { id: "id", disabled: false, text: item.title, href: item.uri, external: true, externalIconAriaLabel: "(opens in new tab)" }
-                        } else {
-                          return { id: "id", disabled: true, text: item.title}
-                        }
+                        return { id: "id", disabled: true, text: item.title}
                       }).concat(defaultSource) : defaultSource
                   }
                 >Sources</ButtonDropdown>
