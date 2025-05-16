@@ -291,7 +291,7 @@ def list_sessions_by_user_id(user_id, limit=15):
     return formatted_items
 
 
-def list_all_sessions(start_time, end_time, has_feedback, has_review, user_id, limit=250):
+def list_all_sessions(start_time, end_time, has_feedback, has_review, user_id, limit=1000):
     # Get all (or first 250) sessions from sessions table
     items = []
     last_evaluated_key = None
@@ -315,14 +315,28 @@ def list_all_sessions(start_time, end_time, has_feedback, has_review, user_id, l
         if not last_evaluated_key:
             break
 
+    # Add a check to see if the items retreive up to the limit
+    total_items = len(items)
+    if limit <= total_items:
+        print(f"Warning: Limit {limit} restricts the number of items retrieved, increase limit to retrieve all items")
+
     # Get list of session IDs that have at least 1 feedback response
     sessions_with_feedback = set()
     while True:
         if last_evaluated_key:
-            response = messages_table.scan(
-                FilterExpression=Attr('feedback_type').exists(),
-                ExclusiveStartKey=last_evaluated_key
-            )
+            # Check if last_evaluated_key contains the necessary keys before using it
+            if last_evaluated_key and 'pk_message_id' in last_evaluated_key and 'sk_session_id' in last_evaluated_key:
+                response = messages_table.scan(
+                    FilterExpression=Attr('feedback_type').exists(),
+                    ExclusiveStartKey={
+                        'pk_message_id': last_evaluated_key['pk_message_id'],
+                        'sk_session_id': last_evaluated_key['sk_session_id']
+                    }
+                )
+            else: 
+                response = messages_table.scan(
+                    FilterExpression=Attr('feedback_type').exists()
+                )
         else: 
             response = messages_table.scan(
                 FilterExpression=Attr('feedback_type').exists()
@@ -356,6 +370,13 @@ def list_all_sessions(start_time, end_time, has_feedback, has_review, user_id, l
         if not last_evaluated_key:
             break
 
+    # Sort items by created_at in descending order to get the latest sessions
+    sorted_items = sorted(items, key=lambda x: x['created_at'], reverse=True)
+
+    # Limit the results to the specified limit
+    limited_items = sorted_items[:limit]
+
+    # Format the limited items
     formatted_items = [
         {
             "session_id": item["pk_session_id"],
@@ -365,7 +386,7 @@ def list_all_sessions(start_time, end_time, has_feedback, has_review, user_id, l
             "has_review": ("Yes" if item["pk_session_id"] in sessions_with_review else "No"),
             "review_id": sessions_with_review.get(item["pk_session_id"],"")
         }
-        for item in items
+        for item in limited_items
     ]
     
     if has_feedback in {"yes", "no"}:
@@ -511,7 +532,7 @@ def lambda_handler(event, context):
     elif operation == 'list_all_sessions_by_user_id':
         return list_sessions_by_user_id(data['user_id'],limit=100)
     elif operation == 'list_all_sessions':
-        return list_all_sessions(data['start_time'], data['end_time'], data['has_feedback'], data['has_review'], data['user_id'], limit=250)
+        return list_all_sessions(data['start_time'], data['end_time'], data['has_feedback'], data['has_review'], data['user_id'])
     elif operation == 'delete_session':
         return delete_session(data['session_id'], data['user_id'])
     elif operation == 'assemble_chat_history':
