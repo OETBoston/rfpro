@@ -35,18 +35,22 @@ export default function NavigationPanel() {
   const [activeHref, setActiveHref] = useState(
     window.location.pathname
   );
-  const isAdmin = useAdmin();
+  const { isAdmin, isLoading: isAdminLoading } = useAdmin();
 
   // update the list of sessions
   const loadSessions = async () => {
+    if (isAdminLoading) {
+      console.log("Waiting for admin status to be determined...");
+      return;
+    }
+
     let username;
     try {
       await Auth.currentAuthenticatedUser().then((value) => username = value.username);
       if (username && needsRefresh) {
         const fetchedSessions = await apiClient.sessions.getSessions(username);
         await updateItems(fetchedSessions);
-        console.log("fetched sessions")
-        // console.log(fetchedSessions);
+        console.log("fetched sessions");
         if (!loaded) {
           setLoaded(true);
         }
@@ -57,9 +61,6 @@ export default function NavigationPanel() {
       setLoaded(true);
       addNotification("error", "Could not load sessions:".concat(error.message));
       addNotification("info", "Please refresh the page");
-      // const delay = ms => new Promise(res => setTimeout(res, ms));
-      // delay(3000).then(() => removeNotification(id));
-
     } finally {
       setLoadingSessions(false);
     }
@@ -68,8 +69,10 @@ export default function NavigationPanel() {
   // this hook allows other components (specifically the chat handler)
   // to request a session refresh (such as if a chat has just been created)
   useEffect(() => {
-    loadSessions();
-  }, [needsRefresh, isAdmin]);
+    if (!isAdminLoading) {
+      loadSessions();
+    }
+  }, [needsRefresh, isAdmin, isAdminLoading]);
 
 
   const onReloadClick = async () => {

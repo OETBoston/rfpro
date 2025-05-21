@@ -148,42 +148,48 @@ def download_feedback(event):
 def get_feedback(event):
     try:
         query_params = event.get('queryStringParameters', {})
-        # session_id = query_params.get('session_id')
-        # start_time = query_params.get('startTime') + "T00:00:00"
-        # end_time = query_params.get('endTime') + "T23:59:59"
-
-        # query_kwargs = {
-        #     'IndexName': 'SessionMessagesIndex',
-        #     'KeyConditionExpression': Key('sk_session_id').eq(session_id) & Key('created_at').between(start_time, end_time),
-        #     'FilterExpression': Attr('feedback_type').exists(),
-        #     'ScanIndexForward': False
-        # }
-
-        # response = messages_table.query(**query_kwargs)
-
-        """
-        Interpretated that this function lists all sessions with the chat bot because the frontend UI 
-        does not allow users to filter by session ID. Admins have permissions to view all user activity.
-        In this case, dynamodb.scan() is used to read all content.
-        Querying by primary key is not sufficient.
-        Changed filter expression and formatter to use "feedback_created_at" field instead of "created_at"
-        time attribute already has "T00:00:00" appended
-        Updated labels in formatted_feedback
-        """
+        print(f"Query parameters received: {query_params}")
+        
         start_time = query_params.get('startTime')
         end_time = query_params.get('endTime')
         topic = query_params.get('topic')
+        print(f"Filtering by time range: {start_time} to {end_time}, topic: {topic}")
 
         filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
         if topic in {"Positive", "Negative"}:
             filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').eq(topic.lower())
         elif topic in {"Error Messages", "Not Clear", "Poorly Formatted", "Inaccurate", "Not Relevant to My Question", "Other"}:
             filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_category').eq(topic)
+        
+        print(f"Using filter expression: {filter_expression}")
 
-        response = messages_table.scan(
-            FilterExpression=filter_expression
-        )
-        items = response.get('Items', [])
+        all_items = []
+        last_evaluated_key = None
+        
+        while True:
+            if last_evaluated_key:
+                print(f"Continuing scan with LastEvaluatedKey: {last_evaluated_key}")
+                response = messages_table.scan(
+                    FilterExpression=filter_expression,
+                    ExclusiveStartKey=last_evaluated_key
+                )
+            else:
+                print("Starting initial scan")
+                response = messages_table.scan(
+                    FilterExpression=filter_expression
+                )
+            
+            items = response.get('Items', [])
+            print(f"Retrieved {len(items)} items in this batch")
+            all_items.extend(items)
+            
+            last_evaluated_key = response.get('LastEvaluatedKey')
+            if not last_evaluated_key:
+                print("No more items to scan")
+                break
+            print(f"More items available, continuing scan")
+
+        print(f"Total items retrieved: {len(all_items)}")
 
         formatted_feedback = [
             {
@@ -197,8 +203,10 @@ def get_feedback(event):
                 "ChatbotMessage": item.get('bot_response', ''),
                 "CreatedAt": item.get('feedback_created_at', '')
             }
-            for item in items
+            for item in all_items
         ]
+
+        print(f"Formatted {len(formatted_feedback)} feedback items")
 
         return {
             'headers': {'Access-Control-Allow-Origin': '*'},
@@ -209,7 +217,7 @@ def get_feedback(event):
         }
 
     except Exception as e:
-        print(e)
+        print(f"Error in get_feedback: {str(e)}")
         return {
             'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 500,

@@ -291,7 +291,7 @@ def list_sessions_by_user_id(user_id, limit=15):
     return formatted_items
 
 
-def list_all_sessions(start_time, end_time, has_feedback, has_review, user_id, limit=1000):
+def list_all_sessions(start_time, end_time, has_feedback, has_review, user_id, limit=10000):
     # Get all (or first 250) sessions from sessions table
     items = []
     last_evaluated_key = None

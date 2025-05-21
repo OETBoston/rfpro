@@ -3,21 +3,27 @@ import { Auth } from 'aws-amplify';
 import { redirect } from 'react-router-dom';
 
 // Define the context type
-type AdminContextType = boolean;
+type AdminContextType = {
+    isAdmin: boolean;
+    isLoading: boolean;
+};
 
 // Create the context
-const AdminContext = createContext<AdminContextType>(false);
+const AdminContext = createContext<AdminContextType>({ isAdmin: false, isLoading: true });
 
 // Define props for the AdminProvider
 interface AdminProviderProps {
-    children: ReactNode; // Specify children as ReactNode
+    children: ReactNode;
 }
 
 // Create a provider component
 export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
+        let mounted = true;
+        
         const checkAdminStatus = async () => {
             try {
                 const result = await Auth.currentAuthenticatedUser();
@@ -26,26 +32,38 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
                     await Auth.signOut({ global: true });
                     return;
                 }
-                console.log("Sign In User Session Payload", result.signInUserSession.idToken.payload["cognito:groups"])
+                
+                if (!mounted) return;
+                
+                console.log("Sign In User Session Payload", result.signInUserSession.idToken.payload["cognito:groups"]);
                 const userGroups = result.signInUserSession.idToken.payload["cognito:groups"];
+                
                 if (userGroups.includes("AdminUsers")) {
                     console.log("Elevated Permission for Admin Users");
                     setIsAdmin(true);
                 } else if (userGroups.includes("OutsideUsers") && !userGroups.includes("BasicUsers")) {
-                    alert("As of Dec 2024, only employees within a designated security group can access Bidbot. Please reach out to Maia Materman (maia.materman@boston.gov) if you need temporary access.")
+                    alert("As of Dec 2024, only employees within a designated security group can access Bidbot. Please reach out to Maia Materman (maia.materman@boston.gov) if you need temporary access.");
                     await Auth.signOut({ global: true });
-                }   
+                }
             } catch (error) {
                 console.log(error);
+            } finally {
+                if (mounted) {
+                    setIsLoading(false);
+                }
             }
         };
 
         checkAdminStatus();
+        
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     return (
-        <AdminContext.Provider value= { isAdmin } >
-        { children }
+        <AdminContext.Provider value={{ isAdmin, isLoading }}>
+            {children}
         </AdminContext.Provider>
     );
 };
