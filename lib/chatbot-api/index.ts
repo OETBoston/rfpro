@@ -46,7 +46,7 @@ export class ChatBotApi extends Construct {
         reviewsTable: tables.reviewsTable,
         kendraIndex: kendra.kendraIndex,
         kendraSource: kendra.kendraSource,
-        feedbackBucket: buckets.feedbackBucket,
+        downloadBucket: buckets.downloadBucket,
         knowledgeBucket: buckets.kendraBucket,
       }
     )

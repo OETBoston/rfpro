@@ -10,7 +10,9 @@ import {
   Select,
   DateRangePickerProps,
   CollectionPreferences,
-  Link
+  Link,
+  ProgressBar,
+  Alert
 } from "@cloudscape-design/components";
 import { Auth } from "aws-amplify";
 import { I18nProvider } from '@cloudscape-design/components/i18n';
@@ -54,6 +56,9 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
   });
   const [preferences, setPreferences] = useState({ pageSize: 10 });
   const { addNotification, removeNotification } = useNotifications();
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const { items, collectionProps, paginationProps } = useCollection(
     [...pages], 
@@ -140,6 +145,36 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
     setLoading(false);
   };
 
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setDownloadError(null);
+    
+    // Start progress animation
+    const progressInterval = setInterval(() => {
+      setDownloadProgress(prev => {
+        if (prev >= 90) return prev; // Cap at 90% until complete
+        return prev + 2;
+      });
+    }, 1000);
+
+    try {
+      await apiClient.sessions.downloadSessions(value.startDate+"T00:00:00", value.endDate+"T23:59:59");
+      setDownloadProgress(100);
+      const id = addNotification("success", "Your files have been downloaded successfully.");
+      Utils.delay(3000).then(() => removeNotification(id));
+    } catch (error) {
+      setDownloadError("Failed to download files. Please try again.");
+      const id = addNotification("error", "Failed to download files. Please try again.");
+      Utils.delay(3000).then(() => removeNotification(id));
+    } finally {
+      clearInterval(progressInterval);
+      setTimeout(() => {
+        setIsDownloading(false);
+        setDownloadProgress(0);
+      }, 1000); // Keep the 100% progress visible for a second
+    }
+  };
 
   const columnDefinitions = [
     {
@@ -178,7 +213,53 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
   return (
     <>
       <I18nProvider locale="en" messages={[messages]}>
+        {isDownloading && (
+          <Box margin={{ bottom: "m" }}>
+            <Alert
+              type="info"
+              header="Downloading Sessions"
+              action={
+                <Button
+                  variant="link"
+                  onClick={() => {
+                    setIsDownloading(false);
+                    setDownloadProgress(0);
+                  }}
+                >
+                  Cancel
+                </Button>
+              }
+            >
+              <SpaceBetween size="m">
+                <div>Preparing your download. This may take up to a minute...</div>
+                <ProgressBar
+                  value={downloadProgress}
+                  label="Download progress"
+                  description={`${downloadProgress}% complete`}
+                />
+              </SpaceBetween>
+            </Alert>
+          </Box>
+        )}
 
+        {downloadError && (
+          <Box margin={{ bottom: "m" }}>
+            <Alert
+              type="error"
+              header="Download Failed"
+              action={
+                <Button
+                  variant="link"
+                  onClick={() => setDownloadError(null)}
+                >
+                  Dismiss
+                </Button>
+              }
+            >
+              {downloadError}
+            </Alert>
+          </Box>
+        )}
 
         <Table
           {...collectionProps}
@@ -315,17 +396,14 @@ export default function AllSessionsTab(props: AllSessionsTabProps) {
                     placeholder="Select Status"
                     options={[{label : "All Review Statuses", value: "any", disabled: false}, {label : "Yes", value: "yes", disabled: false}, {label : "No", value: "no", disabled: false}]}
                   />
-                  {/* <Button iconName="refresh" onClick={(event) => refreshPage()} /> */}
-                  {/* TODO: No Lambda functionality for downloading session data */}
+                  <Button iconName="refresh" onClick={(event) => refreshPage()} />
                   <Button
-                    disabled
                     variant="primary"
-                    // onClick={() => {
-                    //   apiClient.userFeedback.downloadFeedback(selectedOption.value, value.startDate+"T00:00:00", value.endDate+"T23:59:59");
-                    //   const id = addNotification("success", "Your files have been downloaded.")
-                    //   Utils.delay(3000).then(() => removeNotification(id));
-                    // }}
-                  >Download All</Button>
+                    onClick={handleDownload}
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? "Downloading..." : "Download All"}
+                  </Button>
                 </SpaceBetween>
               }
               description="Please expect a delay for your changes to be reflected. Press the refresh button to see the latest changes."

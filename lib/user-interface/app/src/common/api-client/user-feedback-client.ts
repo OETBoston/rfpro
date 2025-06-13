@@ -31,6 +31,7 @@ export class UserFeedbackClient {
 
   /** This is similar to getUserFeedback below, but initiates a CSV download */
   async downloadFeedback(topic: string, startTime?: string, endTime?: string) {
+    console.log("Downloading feedback");
     const auth = await Utils.authenticate();
 
     /** This fetch call will get a presigned URL for downloading from S3 */

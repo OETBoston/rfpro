@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 import uuid
 from boto3.dynamodb.conditions import Key, Attr
+import csv
+import io
+from concurrent.futures import ThreadPoolExecutor
 
 SESSIONS_TABLE = os.getenv("SESSION_TABLE")
 MESSAGES_TABLE = os.getenv("MESSAGES_TABLE")
@@ -498,6 +501,254 @@ def assemble_chat_history(session_id):
         print(f"Error assembling chat history for session {session_id}: {error}")
         return []
 
+def download_all_sessions_csv(start_time=None, end_time=None, job_id=None):
+    """
+    Scan all sessions in the given time range (or all if not provided), write to a CSV, upload to S3, and return a presigned URL.
+    Uses parallel processing and efficient batch operations to minimize DynamoDB calls.
+    Supports polling mechanism for long-running exports.
+    """
+    import csv
+    import io
+    import boto3
+    import os
+    from boto3.dynamodb.conditions import Key
+    from concurrent.futures import ThreadPoolExecutor
+    print(f"[download_all_sessions_csv] start_time: {start_time}, end_time: {end_time}, job_id: {job_id}")
+    try:
+        # Use the broadest possible range if not provided
+        if not start_time:
+            start_time = "0000-01-01T00:00:00"
+        if not end_time:
+            end_time = "9999-12-31T23:59:59"
+        print(f"[download_all_sessions_csv] Using range: {start_time} to {end_time}")
+
+        # Create S3 client first
+        s3 = boto3.client('s3')
+        S3_DOWNLOAD_BUCKET = os.environ["SESSION_S3_DOWNLOAD"]
+        file_name = f"all-sessions-{start_time}-{end_time}.csv"
+        
+        # If this is a status check, verify if the file exists
+        if job_id:
+            try:
+                s3.head_object(Bucket=S3_DOWNLOAD_BUCKET, Key=file_name)
+                # File exists, generate presigned URL
+                presigned_url = s3.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': S3_DOWNLOAD_BUCKET, 'Key': file_name},
+                    ExpiresIn=3600
+                )
+                return {
+                    'headers': {'Access-Control-Allow-Origin': '*'},
+                    'statusCode': 200,
+                    'body': json.dumps({
+                        'status': 'completed',
+                        'download_url': presigned_url
+                    })
+                }
+            except:
+                # File doesn't exist yet
+                return {
+                    'headers': {'Access-Control-Allow-Origin': '*'},
+                    'statusCode': 200,
+                    'body': json.dumps({
+                        'status': 'processing'
+                    })
+                }
+
+        # Create a temporary file to stream the CSV
+        temp_file = io.StringIO()
+        writer = csv.writer(temp_file, quoting=csv.QUOTE_ALL)
+        
+        # Write header
+        columns = [
+            # Session information
+            "SessionID", "UserID", "Title", "CreatedAt", "UpdatedAt", "MessageCount",
+            # Message information
+            "MessageID", "UserPrompt", "BotResponse", "MessageCreatedAt", "ResponseTime",
+            # Feedback information
+            "FeedbackType", "FeedbackCategory", "FeedbackMessage", "FeedbackRank", "FeedbackCreatedAt",
+            # Review information
+            "ReviewID", "ReviewedBy", "ReviewComments", "ReviewedAt"
+        ]
+        writer.writerow(columns)
+
+        def get_messages_for_session(session_id):
+            """Get messages for a single session"""
+            try:
+                response = messages_table.query(
+                    IndexName='SessionMessagesIndex',
+                    KeyConditionExpression="sk_session_id = :sid",
+                    ExpressionAttributeValues={':sid': session_id},
+                    Limit=100
+                )
+                return session_id, response.get('Items', [])
+            except Exception as e:
+                print(f"Error getting messages for session {session_id}: {e}")
+                return session_id, []
+
+        def get_review_for_session(session_id):
+            """Get review for a single session"""
+            try:
+                response = reviews_table.scan(
+                    FilterExpression=Attr('session_id').eq(session_id),
+                    Limit=1
+                )
+                return session_id, response.get('Items', [{}])[0] if response.get('Items') else {}
+            except Exception as e:
+                print(f"Error getting review for session {session_id}: {e}")
+                return session_id, {}
+
+        # Process sessions in batches
+        batch_size = 100  # Process 100 sessions at a time
+        last_evaluated_key = None
+        total_sessions = 0
+        total_messages = 0
+
+        while True:
+            # Get batch of sessions
+            if last_evaluated_key:
+                response = sessions_table.scan(
+                    FilterExpression=Key('created_at').between(start_time, end_time),
+                    ExclusiveStartKey=last_evaluated_key,
+                    Limit=batch_size
+                )
+            else:
+                response = sessions_table.scan(
+                    FilterExpression=Key('created_at').between(start_time, end_time),
+                    Limit=batch_size
+                )
+            
+            sessions = response.get('Items', [])
+            if not sessions:
+                break
+
+            total_sessions += len(sessions)
+            print(f"[download_all_sessions_csv] Processing batch of {len(sessions)} sessions. Total so far: {total_sessions}")
+
+            # Get all session IDs in this batch
+            session_ids = [session['pk_session_id'] for session in sessions]
+
+            # Parallel fetch of messages and reviews
+            messages_by_session = {}
+            reviews_by_session = {}
+            
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                # Fetch messages in parallel
+                message_futures = [executor.submit(get_messages_for_session, sid) for sid in session_ids]
+                for future in message_futures:
+                    session_id, messages = future.result()
+                    messages_by_session[session_id] = messages
+                    total_messages += len(messages)
+
+                # Fetch reviews in parallel
+                review_futures = [executor.submit(get_review_for_session, sid) for sid in session_ids]
+                for future in review_futures:
+                    session_id, review = future.result()
+                    reviews_by_session[session_id] = review
+
+            # Write data for this batch
+            for session in sessions:
+                session_id = session['pk_session_id']
+                messages = messages_by_session.get(session_id, [])
+                review = reviews_by_session.get(session_id, {})
+
+                if not messages:
+                    # Write session info with empty message fields
+                    writer.writerow([
+                        session.get('pk_session_id', ''),
+                        session.get('user_id', ''),
+                        session.get('title', ''),
+                        session.get('created_at', ''),
+                        session.get('updated_at', ''),
+                        session.get('message_count', ''),
+                        '', '', '', '', '',  # Message fields
+                        '', '', '', '', '',  # Feedback fields
+                        '', '', '', ''       # Review fields
+                    ])
+                else:
+                    for message in messages:
+                        writer.writerow([
+                            # Session information
+                            session.get('pk_session_id', ''),
+                            session.get('user_id', ''),
+                            session.get('title', ''),
+                            session.get('created_at', ''),
+                            session.get('updated_at', ''),
+                            session.get('message_count', ''),
+                            # Message information
+                            message.get('pk_message_id', ''),
+                            message.get('user_prompt', ''),
+                            message.get('bot_response', ''),
+                            message.get('created_at', ''),
+                            message.get('response_time', ''),
+                            # Feedback information
+                            message.get('feedback_type', ''),
+                            message.get('feedback_category', ''),
+                            message.get('feedback_message', ''),
+                            message.get('feedback_rank', ''),
+                            message.get('feedback_created_at', ''),
+                            # Review information
+                            review.get('pk_review_id', ''),
+                            review.get('reviewed_by', ''),
+                            review.get('comments', ''),
+                            review.get('reviewed_at', '')
+                        ])
+
+            # Get the next batch
+            last_evaluated_key = response.get('LastEvaluatedKey')
+            if not last_evaluated_key:
+                break
+
+            # Periodically upload to S3 to prevent memory issues
+            if total_sessions % 200 == 0:  # Every 200 sessions
+                print(f"[download_all_sessions_csv] Uploading intermediate results. Sessions: {total_sessions}, Messages: {total_messages}")
+                temp_file.seek(0)
+                s3.put_object(
+                    Bucket=S3_DOWNLOAD_BUCKET,
+                    Key=f"temp-{file_name}",
+                    Body=temp_file.getvalue()
+                )
+                temp_file = io.StringIO()
+                writer = csv.writer(temp_file, quoting=csv.QUOTE_ALL)
+                writer.writerow(columns)  # Write header again
+
+        print(f"[download_all_sessions_csv] Completed processing. Total sessions: {total_sessions}, Total messages: {total_messages}")
+
+        # Final upload to S3
+        temp_file.seek(0)
+        s3.put_object(
+            Bucket=S3_DOWNLOAD_BUCKET,
+            Key=file_name,
+            Body=temp_file.getvalue()
+        )
+        temp_file.close()
+
+        # Generate presigned URL
+        presigned_url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': S3_DOWNLOAD_BUCKET, 'Key': file_name},
+            ExpiresIn=3600
+        )
+        print(f"[download_all_sessions_csv] presigned_url: {presigned_url}")
+        
+        return {
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'statusCode': 200,
+            'body': json.dumps({
+                'status': 'completed',
+                'download_url': presigned_url
+            })
+        }
+    except Exception as e:
+        print(f"[download_all_sessions_csv] Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'statusCode': 500,
+            'body': json.dumps({'error': f'Failed to download sessions: {str(e)}'})
+        }
+
 def lambda_handler(event, context):
     isAdmin = False
     try:
@@ -510,7 +761,9 @@ def lambda_handler(event, context):
 
     data = json.loads(event['body'])
     operation = data.get('operation')
-    
+    print(f"[lambda_handler] operation: {operation}")
+    print(f"[lambda_handler] data: {data}")
+
     if operation == 'add_new_session_with_first_message':
         return add_new_session_with_first_message(
             data.get('session_id'),
@@ -541,6 +794,8 @@ def lambda_handler(event, context):
         return update_review_session(data['review_id'], data['session_id'], data['user_id'])
     elif operation == 'delete_review_session':
         return delete_review_session(data['review_id'], data['session_id'], data['user_id'])
+    elif operation == 'download_all_sessions_csv':
+        return download_all_sessions_csv(data.get('start_time'), data.get('end_time'), data.get('job_id'))
     else:
         return {
             'statusCode': 400,

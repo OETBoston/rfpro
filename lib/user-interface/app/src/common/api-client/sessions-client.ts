@@ -290,4 +290,85 @@ export class SessionsClient {
     // console.log(output);
     return output;
   }
+
+  async downloadSessions(startTime: string, endTime: string) {
+    const auth = await Utils.authenticate();
+    /** Using default full time range to download all, can support custom time range based on filters in the future if needed */
+    
+    // Start the export
+    const response = await fetch(this.API + '/user-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + auth,
+      },
+      body: JSON.stringify({
+        "operation": "download_all_sessions_csv",
+        "start_time": startTime,
+        "end_time": endTime,
+      })
+    });
+    const result = await response.json();
+
+    // If we got a download URL immediately, use it
+    if (result.download_url) {
+      this.initiateDownload(result.download_url);
+      return;
+    }
+
+    // Otherwise, start polling
+    const jobId = `${startTime}-${endTime}`; // Use time range as job ID
+    await this.pollForCompletion(jobId, startTime, endTime);
+  }
+
+  private async pollForCompletion(jobId: string, startTime: string, endTime: string) {
+    const auth = await Utils.authenticate();
+    const maxAttempts = 30; // 5 minutes total (10 seconds * 30)
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds between polls
+      attempts++;
+
+      const response = await fetch(this.API + '/user-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + auth,
+        },
+        body: JSON.stringify({
+          "operation": "download_all_sessions_csv",
+          "start_time": startTime,
+          "end_time": endTime,
+          "job_id": jobId
+        })
+      });
+      const result = await response.json();
+
+      if (result.status === 'completed' && result.download_url) {
+        this.initiateDownload(result.download_url);
+        return;
+      }
+    }
+
+    throw new Error('Export timed out after 5 minutes');
+  }
+
+  private initiateDownload(downloadUrl: string) {
+    fetch(downloadUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Disposition': 'attachment',
+      }
+    }).then(response => response.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "data.csv";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+  }
 }

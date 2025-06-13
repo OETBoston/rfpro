@@ -5,7 +5,7 @@ import { Construct } from "constructs";
 
 export class S3BucketStack extends cdk.Stack {
   public readonly kendraBucket: s3.Bucket;
-  public readonly feedbackBucket: s3.Bucket;
+  public readonly downloadBucket: s3.Bucket;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -41,7 +41,7 @@ export class S3BucketStack extends cdk.Stack {
     // Add the policy to the bucket
     this.kendraBucket.addToResourcePolicy(policyStatement);
     
-    this.feedbackBucket = new s3.Bucket(scope, 'FeedbackDownloadBucket', {
+    this.downloadBucket = new s3.Bucket(scope, 'DownloadBucket', {
       // bucketName: 'feedback-download',
       versioned: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,

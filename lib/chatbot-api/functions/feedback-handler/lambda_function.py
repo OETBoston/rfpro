@@ -4,6 +4,9 @@ import boto3
 import os
 from datetime import datetime
 from boto3.dynamodb.conditions import Key, Attr
+import traceback
+import csv
+import io
 
 dynamodb = boto3.resource('dynamodb')
 messages_table = dynamodb.Table(os.environ.get('FEEDBACK_TABLE'))
@@ -94,34 +97,72 @@ def post_feedback(event):
         
     
 def download_feedback(event):
-    """
-    start_time and end_time already have "T00:00:00" time suffix
-    """
+    print("[download_feedback] event:", event)
     data = json.loads(event['body'])
-    # start_time = data.get('startTime') + "T00:00:00"
-    # end_time = data.get('endTime') + "T23:59:59"
+    print("[download_feedback] parsed body:", data)
     start_time = data.get('startTime')
     end_time = data.get('endTime')
-    session_id = data.get('session_id')
+    topic = data.get('topic')
+    print(f"[download_feedback] start_time: {start_time} (type: {type(start_time)}), end_time: {end_time} (type: {type(end_time)}), topic: {topic} (type: {type(topic)})")
 
     try:
-        query_kwargs = {
-            'IndexName': 'SessionMessagesIndex',
-            'KeyConditionExpression': Key('sk_session_id').eq(session_id) & Key('created_at').between(start_time, end_time),
-            'FilterExpression': Attr('feedback_type').exists(),
-            'ScanIndexForward': False
-        }
-        response = messages_table.query(**query_kwargs)
-        items = response.get('Items', [])
+        filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').exists()
+        if topic in {"Positive", "Negative"}:
+            filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_type').eq(topic.lower())
+        elif topic in {"Error Messages", "Not Clear", "Poorly Formatted", "Inaccurate", "Not Relevant to My Question", "Other"}:
+            filter_expression = Key('feedback_created_at').between(start_time, end_time) & Attr('feedback_category').eq(topic)
 
-        csv_content = "FeedbackID, SessionID, UserPrompt, FeedbackComment, Topic, Problem, Feedback, ChatbotMessage, CreatedAt\n"
-        for item in items:
-            csv_content += f"{item['pk_message_id']},{item['sk_session_id']},{item.get('user_prompt', '')},{item.get('feedback_message', '').replace(',', '')},{item.get('feedback_category', '')},, \
-                            {item.get('feedback_type', '')},{item.get('bot_response', '').replace(',', '')},{item.get('feedback_created_at', '')}\n"
+        print(f"[download_feedback] Using filter expression: {filter_expression}")
+
+        all_items = []
+        last_evaluated_key = None
+
+        while True:
+            if last_evaluated_key:
+                response = messages_table.scan(
+                    FilterExpression=filter_expression,
+                    ExclusiveStartKey=last_evaluated_key
+                )
+            else:
+                response = messages_table.scan(
+                    FilterExpression=filter_expression
+                )
+            items = response.get('Items', [])
+            all_items.extend(items)
+            last_evaluated_key = response.get('LastEvaluatedKey')
+            if not last_evaluated_key:
+                break
+
+        print(f"[download_feedback] items: {all_items}")
+
+        # Use csv module to write CSV properly
+        output = io.StringIO()
+        writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+        # Define columns
+        columns = [
+            "FeedbackID", "SessionID", "UserPrompt", "FeedbackComment", "FeedbackCategory", "FeedbackType", "FeedbackRank", "ChatbotMessage", "CreatedAt"
+        ]
+        writer.writerow(columns)
+        for item in all_items:
+            writer.writerow([
+                item.get('pk_message_id', ''),
+                item.get('sk_session_id', ''),
+                item.get('user_prompt', ''),
+                item.get('feedback_message', ''),
+                item.get('feedback_category', ''),
+                item.get('feedback_type', ''),
+                item.get('feedback_rank', ''),
+                item.get('bot_response', ''),
+                item.get('feedback_created_at', ''),
+            ])
+        csv_content = output.getvalue()
+        output.close()
+        print(f"[download_feedback] csv_content: {csv_content}")
 
         s3 = boto3.client('s3')
         S3_DOWNLOAD_BUCKET = os.environ["FEEDBACK_S3_DOWNLOAD"]
         file_name = f"feedback-{start_time}-{end_time}.csv"
+        print(f"[download_feedback] Uploading to S3 bucket: {S3_DOWNLOAD_BUCKET}, file_name: {file_name}")
         s3.put_object(Bucket=S3_DOWNLOAD_BUCKET, Key=file_name, Body=csv_content)
 
         presigned_url = s3.generate_presigned_url(
@@ -129,6 +170,7 @@ def download_feedback(event):
             Params={'Bucket': S3_DOWNLOAD_BUCKET, 'Key': file_name},
             ExpiresIn=3600
         )
+        print(f"[download_feedback] presigned_url: {presigned_url}")
 
         return {
             'headers': {'Access-Control-Allow-Origin': '*'},
@@ -137,7 +179,8 @@ def download_feedback(event):
         }
 
     except Exception as e:
-        print(e)
+        print("[download_feedback] Exception occurred:", e)
+        traceback.print_exc()
         return {
             'headers': {'Access-Control-Allow-Origin': '*'},
             'statusCode': 500,

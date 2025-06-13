@@ -13,7 +13,7 @@ interface LambdaFunctionStackProps {
   readonly wsApiEndpoint : string;
   readonly kendraIndex : kendra.CfnIndex;
   readonly kendraSource : kendra.CfnDataSource;
-  readonly feedbackBucket : s3.Bucket;
+  readonly downloadBucket : s3.Bucket;
   readonly knowledgeBucket : s3.Bucket;
   readonly sessionsTable: Table,
   readonly messagesTable: Table,
@@ -39,10 +39,20 @@ export class LambdaFunctionStack extends cdk.Stack {
       environment: {
         "SESSION_TABLE" : props.sessionsTable.tableName,
         "MESSAGES_TABLE": props.messagesTable.tableName,
-        "REVIEW_TABLE": props.reviewsTable.tableName
+        "REVIEW_TABLE": props.reviewsTable.tableName,
+        "SESSION_S3_DOWNLOAD" : props.downloadBucket.bucketName
       },
-      timeout: cdk.Duration.seconds(30)
+      timeout: cdk.Duration.seconds(900),
+      memorySize: 256
     });
+
+    sessionAPIHandlerFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        's3:*'
+      ],
+      resources: [props.downloadBucket.bucketArn,props.downloadBucket.bucketArn+"/*"]
+    }));
     
     sessionAPIHandlerFunction.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
@@ -128,7 +138,7 @@ export class LambdaFunctionStack extends cdk.Stack {
       handler: 'lambda_function.lambda_handler', // Points to the 'hello' file in the lambda directory
       environment: {
         "FEEDBACK_TABLE" : props.messagesTable.tableName,
-        "FEEDBACK_S3_DOWNLOAD" : props.feedbackBucket.bucketName
+        "FEEDBACK_S3_DOWNLOAD" : props.downloadBucket.bucketName
       },
       timeout: cdk.Duration.seconds(30)
     });
@@ -151,7 +161,7 @@ export class LambdaFunctionStack extends cdk.Stack {
       actions: [
         's3:*'
       ],
-      resources: [props.feedbackBucket.bucketArn,props.feedbackBucket.bucketArn+"/*"]
+      resources: [props.downloadBucket.bucketArn,props.downloadBucket.bucketArn+"/*"]
     }));
 
     this.feedbackFunction = feedbackAPIHandlerFunction;

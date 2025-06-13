@@ -17,4 +17,4 @@ printf '%100s\n' | tr ' ' '-'
 echo "\n[INFO] Rebuilding CDK Scripts & Assets\n"
 npm run build --verbose
 echo "\n[INFO] Deploying to AWS Cloudfront...\n"
-cdk deploy $CDK_STACK_NAME --profile $AWS_PROFILE --region $CDK_DEFAULT_REGION
+cdk deploy $CDK_STACK_NAME --profile $AWS_PROFILE --region $CDK_DEFAULT_REGION --verbose
