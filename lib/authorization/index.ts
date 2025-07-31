@@ -27,7 +27,7 @@ export class AuthorizationStack extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       selfSignUpEnabled: false,
       mfa: cognito.Mfa.OPTIONAL,
-      advancedSecurityMode: cognito.AdvancedSecurityMode.ENFORCED,
+      //advancedSecurityMode: cognito.AdvancedSecurityMode.ENFORCED,
       autoVerify: { email: true, phone: true },
       signInAliases: {
         email: true,
@@ -102,6 +102,7 @@ export class AuthorizationStack extends Construct {
     // cognito.UserPoolClientIdentityProvider.COGNITO
     
     // Add the OIDC identity provider to the User Pool
+    // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_cognito.UserPoolIdentityProviderOidc.html
     const oidcProvider = new UserPoolIdentityProviderOidc(this, 
       'bostonOIDCProvider', {
         name: process.env.COGNITO_OIDC_PROVIDER_NAME!,
@@ -109,12 +110,6 @@ export class AuthorizationStack extends Construct {
         clientId: process.env.COGNITO_OIDC_PROVIDER_CLIENT_ID!,
         clientSecret: process.env.COGNITO_OIDC_PROVIDER_CLIENT_SECRET!,
         issuerUrl: process.env.COGNITO_OIDC_PROVIDER_ISSUER_URL!,
-        attributeMapping: {
-          custom: {
-            username: ProviderAttribute.other('sub'),
-            isMemberOf: ProviderAttribute.other('custom:isMemberOf')
-          }
-        },
         endpoints: {
           authorization: process.env.COGNITO_OIDC_PROVIDER_AUTHORIZATION_ENDPOINT!,
           jwksUri: process.env.COGNITO_OIDC_PROVIDER_JWKS_URI!,
