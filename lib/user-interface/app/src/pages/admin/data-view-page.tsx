@@ -16,7 +16,7 @@ import { Auth } from "aws-amplify";
 import DataFileUpload from "./file-upload-tab";
 import { ApiClient } from "../../common/api-client/api-client";
 import { AppContext } from "../../common/app-context";
-import { useAdmin } from "../../common/admin-context.js";
+import { useAdmin } from "../../common/admin-context";
 
 export default function DataPage() {
   const onFollow = useOnFollow();

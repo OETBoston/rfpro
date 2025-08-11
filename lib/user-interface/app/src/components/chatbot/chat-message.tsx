@@ -24,7 +24,7 @@ import {
   ChatBotHistoryItem,
   ChatBotMessageType,
 } from "./types";
-import { useAdmin } from "../../common/admin-context.js";
+import { useAdmin } from "../../common/admin-context";
 
 import "react-json-view-lite/dist/index.css";
 import "../../styles/app.scss";

@@ -2,7 +2,6 @@ import { ButtonProps, Button } from "@cloudscape-design/components";
 import useOnFollow from "../../common/hooks/use-on-follow";
 
 interface CustomButtonProps extends ButtonProps {
-  style?: React.CSSProperties;
   className?: string;
 }
 

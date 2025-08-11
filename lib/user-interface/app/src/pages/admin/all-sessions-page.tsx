@@ -10,7 +10,7 @@ import useOnFollow from "../../common/hooks/use-on-follow";
 import AllSessionsTab from "./all-sessions-tab";
 import { CHATBOT_NAME } from "../../common/constants";
 import { useState, useEffect } from "react";
-import { useAdmin } from "../../common/admin-context.js";
+import { useAdmin } from "../../common/admin-context";
   
   
 export default function AllSessionsPage() {

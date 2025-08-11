@@ -14,7 +14,7 @@ import ChatInputPanel, { ChatScrollState } from "./chat-input-panel";
 import styles from "../../styles/chat.module.scss";
 import { CHATBOT_NAME } from "../../common/constants";
 import { useNotifications } from "../notif-manager";
-import { useAdmin } from "../../common/admin-context.js";
+import { useAdmin } from "../../common/admin-context";
 
 export default function Chat(props: { sessionId?: string}) {
   const appContext = useContext(AppContext);
@@ -31,7 +31,6 @@ export default function Chat(props: { sessionId?: string}) {
     []
   );
   const [title, setTitle] = useState<string>("");
-  
   /** Loads session history */
   useEffect(() => {
     if (!appContext) return;
@@ -132,6 +131,8 @@ export default function Chat(props: { sessionId?: string}) {
     await apiClient.userFeedback.sendUserFeedback(feedbackData);
   }
 
+
+
   return (
     <div className={styles.chat_container}> 
       <SpaceBetween direction="vertical" size="m">
@@ -141,7 +142,7 @@ export default function Chat(props: { sessionId?: string}) {
             statusIconAriaLabel="Info"
             header=""
         >
-          AI Models can make mistakes. Be mindful in validating important information. The tool will capture your responses to ensure that it is giving accurate information, and de-identified questions and responses from only the 5/14/2025 activity will be shared with researchers for further analysis.
+          AI Models can make mistakes. Be mindful in validating important information. Your questions and responses will be reviewed by Procurement to ensure that BidBot is continually giving accurate information.
         </Alert> )}
 
         
@@ -163,7 +164,29 @@ export default function Chat(props: { sessionId?: string}) {
       </SpaceBetween>
       <div className={styles.welcome_text}>
         {messageHistory.length == 0 && !session?.loading && (
-          <center>{CHATBOT_NAME}</center>
+          <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px', color: 'black', textAlign: 'left' }}>
+            <h1 style={{ textAlign: 'center', marginBottom: '20px', fontSize: '26px', fontWeight: 'bold', color: 'black' }}>
+              Welcome to BidBot!
+            </h1>
+            <p style={{ marginBottom: '12px', fontSize: '15px', lineHeight: '1.4' }}>
+              This generative AI tool was designed by the City of Boston to support staff working on procurements in a safe and secure environment. BidBot can be used to:
+            </p>
+            <ul style={{ marginBottom: '12px', paddingLeft: '18px', fontSize: '15px', lineHeight: '1.4' }}>
+              <li style={{ marginBottom: '2px' }}>Answer general questions about procurement processes</li>
+              <li style={{ marginBottom: '2px' }}>Help you strategize about sourcing methods for a specific procurement</li>
+              <li style={{ marginBottom: '2px' }}>Create a first draft for procurement documents (eg, scope of work, evaluation criteria, etc)</li>
+              <li style={{ marginBottom: '2px' }}>And more!</li>
+            </ul>
+            <p style={{ marginBottom: '12px', fontSize: '15px', lineHeight: '1.4' }}>
+              To get started, click on one of the prompts below, or create your own prompt in the text box at the bottom of the screen.
+            </p>
+            <p style={{ marginBottom: '12px', fontSize: '15px', lineHeight: '1.4' }}>
+              After BidBot replies to your prompt, you can ask a follow-up question and continue back and forth, like in a text conversation.
+            </p>
+            <p style={{ fontSize: '15px', lineHeight: '1.4' }}>
+              To learn more about any of BidBot's responses, click "Sources". You can also go to Finance Academy or contact your Procurement Analyst to find out more.
+            </p>
+          </div>
         )}
         {session?.loading && (
           <center>
@@ -177,7 +200,8 @@ export default function Chat(props: { sessionId?: string}) {
           running={running}
           setRunning={setRunning}
           messageHistory={messageHistory}
-          setMessageHistory={(history) => setMessageHistory(history)}          
+          setMessageHistory={(history) => setMessageHistory(history)}
+          showPromptButtons={messageHistory.length === 0 && !session?.loading}      
         />
       </div>
     </div>

@@ -7,7 +7,7 @@ import {
   SpaceBetween,
   StatusIndicator
 } from "@cloudscape-design/components";
-import PointerIcon from "../../public/images/pointer-icon.jsx";
+import PointerIcon from "../../images/pointer-icon.jsx";
 import useOnFollow from "../common/hooks/use-on-follow";
 import { useNavigationPanelState } from "../common/hooks/use-navigation-panel-state";
 import { AppContext } from "../common/app-context";
@@ -18,8 +18,8 @@ import { Auth } from "aws-amplify";
 import { v4 as uuidv4 } from "uuid";
 import { SessionRefreshContext } from "../common/session-refresh-context"
 import { useNotifications } from "../components/notif-manager";
-import { Utils } from "../common/utils.js";
-import { useAdmin } from "../common/admin-context.js";
+import { Utils } from "../common/utils";
+import { useAdmin } from "../common/admin-context";
 
 export default function NavigationPanel() {
   const appContext = useContext(AppContext);
@@ -143,7 +143,6 @@ export default function NavigationPanel() {
           href={`/chatbot/playground/${uuidv4()}`}
           data-alignment="right"
           className="new-chat-button"
-          style={{ textAlign: "right" }}
         >
           New session
         </RouterButton>

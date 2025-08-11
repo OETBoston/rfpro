@@ -27,7 +27,7 @@ export class AuthorizationStack extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       selfSignUpEnabled: false,
       mfa: cognito.Mfa.OPTIONAL,
-      //advancedSecurityMode: cognito.AdvancedSecurityMode.ENFORCED,
+      // advancedSecurityMode: cognito.AdvancedSecurityMode.ENFORCED,
       autoVerify: { email: true, phone: true },
       signInAliases: {
         email: true,
@@ -132,7 +132,7 @@ export class AuthorizationStack extends Construct {
           authorizationCodeGrant: true,
           implicitCodeGrant: true
         },
-        callbackUrls: ["https://" + (process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL ? process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL : props.distributionDomainName)],
+        callbackUrls: ["https://" + (process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL ? process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL : props.distributionDomainName), "http://localhost:3000"],
         logoutUrls: [process.env.COGNITO_USER_POOL_CLIENT_LOGOUT_URL!],
       },
     });

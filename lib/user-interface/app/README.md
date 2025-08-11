@@ -6,10 +6,39 @@ This repository serves as a base chatbot application that uses AWS products. The
 - MBTA
 - EEA
 
-# To run the app
-In the terminal
-- npm install
-- npm run dev
+# To test local frontend development mode with deployed backend
+Please add this file to the aws-exports.json folder in the `/lib/user-interface/app/public` directory:
+```
+{
+    "Auth": {
+      "region": "us-east-1",
+      "userPoolId": [INSERT_USER_POOL_ID_HERE],
+      "userPoolWebClientId": [INSERT_USER_POOL_WEB_CLIENT_ID_HERE],
+      "oauth": {
+        "domain": [INSERT_COGNITO_DOMAIN_HERE],
+        "scope": [
+          "aws.cognito.signin.user.admin",
+          "email",
+          "openid",
+          "profile"
+        ],
+        "redirectSignIn": "http://localhost:3000",
+        "redirectSignOut": "[NOT_IMPORTANT_CAN_USE_PROD_SIGNOUT_LINK]",
+        "responseType": "code"
+      }
+    },
+    "httpEndpoint": "https://xxxxxx.execute-api.us-east-1.amazonaws.com/",
+    "wsEndpoint": "wss://xxxxxxxx.execute-api.us-east-1.amazonaws.com/prod",
+    "federatedSignInProvider": [INSERT_FEDERATED_SIGN_IN_PROVIDER_NAME],
+    "config": {
+      "api_endpoint": "https://xxxxxx.execute-api.us-east-1.amazonaws.com/",
+      "websocket_endpoint": "wss://xxxxxxxx.execute-api.us-east-1.amazonaws.com/prod",
+      "rag_enabled": false
+    }
+  }
+```
+You may fetch the aws-exports.json file created in the cdk deployment from the s3 bucket,
+but make sure to replace the redirectedSignIn in order to bypass oauth redirect to prod locally.
 
 ## Front-end
 The front-end of the base application is located in this repository. 

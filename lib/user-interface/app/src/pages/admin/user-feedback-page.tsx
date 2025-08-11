@@ -17,7 +17,7 @@ import FeedbackPanel from "../../components/feedback-panel";
 import { CHATBOT_NAME } from "../../common/constants";
 import { useState, useEffect } from "react";
 import { Auth } from "aws-amplify";
-import { useAdmin } from "../../common/admin-context.js";
+import { useAdmin } from "../../common/admin-context";
 
 
 export default function UserFeedbackPage() {

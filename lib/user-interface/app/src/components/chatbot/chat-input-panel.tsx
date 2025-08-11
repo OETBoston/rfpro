@@ -41,6 +41,7 @@ import {
 import { Utils } from "../../common/utils";
 import {SessionRefreshContext} from "../../common/session-refresh-context"
 import { useNotifications } from "../notif-manager";
+import PromptButtons from "./prompt-buttons";
 
 export interface ChatInputPanelProps {
   running: boolean;
@@ -48,6 +49,7 @@ export interface ChatInputPanelProps {
   session: { id: string; loading: boolean };
   messageHistory: ChatBotHistoryItem[];
   setMessageHistory: (history: ChatBotHistoryItem[]) => void;  
+  showPromptButtons?: boolean;
 }
 
 export abstract class ChatScrollState {
@@ -74,13 +76,25 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   useEffect(() => {
     messageHistoryRef.current = props.messageHistory;    
   }, [props.messageHistory]);
+
+  // Handle input value changes
+  const handleInputChange = (value: string) => {
+    setState(state => ({ ...state, value }));
+  };
+
+  // Handle prompt button clicks
+  const handlePromptClick = (prompt: string) => {
+    setState(prev => ({ ...prev, value: prompt }));
+    // Send the message directly with the prompt
+    handleSendMessage(prompt);
+  };
   
 
 
   /** Speech recognition */
   useEffect(() => {
     if (transcript) {
-      setState((state) => ({ ...state, value: transcript }));
+      handleInputChange(transcript);
     }
   }, [transcript]);
 
@@ -130,7 +144,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   }, [props.messageHistory]);
 
   /**Sends a message to the chat API */
-  const handleSendMessage = async () => {    
+  const handleSendMessage = async (promptMessage?: string) => {    
     if (props.running) return;
     if (readyState !== ReadyState.OPEN) return;
     ChatScrollState.userHasScrolled = false;
@@ -139,7 +153,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     await Auth.currentAuthenticatedUser().then((value) => username = value.username);
     if (!username) return;    
 
-    const messageToSend = state.value.trim();
+    const messageToSend = (promptMessage || state.value).trim();
     if (messageToSend.length === 0) {
       addNotification("error","Please do not submit blank text!");
       return;          
@@ -336,7 +350,13 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   }[readyState];
 
   return (
-    <SpaceBetween direction="vertical" size="l">
+    <SpaceBetween direction="vertical" size="xs">
+      {props.showPromptButtons && (
+        <PromptButtons 
+          onPromptClick={handlePromptClick}
+          disabled={props.running || props.session.loading}
+        />
+      )}
       <Container>
         <div className={styles.input_textarea_container}>
           <SpaceBetween size="xxs" direction="horizontal" alignItems="center">
@@ -361,9 +381,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
             minRows={1}
             spellCheck={true}
             autoFocus
-            onChange={(e) =>
-              setState((state) => ({ ...state, value: e.target.value }))
-            }
+            onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key == "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -381,7 +399,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
                 state.value.trim().length === 0 ||
                 props.session.loading
               }
-              onClick={handleSendMessage}
+              onClick={() => handleSendMessage()}
               iconAlign="right"
               iconName={!props.running ? "angle-right-double" : undefined}
               variant="primary"
