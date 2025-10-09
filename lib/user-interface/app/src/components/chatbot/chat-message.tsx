@@ -196,7 +196,7 @@ export default function ChatMessage(props: ChatMessageProps) {
                       Utils.delay(3000).then(() => removeNotification(id));
                     }
                   }}>
-                <ButtonDropdown
+                <ButtonDropdown className="sources-button"
                   items={
                     (props.message.metadata?.Sources && (props.message.metadata.Sources as any[]).length > 0) ?
                       (props.message.metadata.Sources as any[]).map((item) => {
@@ -215,7 +215,7 @@ export default function ChatMessage(props: ChatMessageProps) {
             </Box>
           ) : null}
           {props.message.content.length > 0 ? (
-            <div className={styles.btn_chabot_message_copy}>
+            <div className={`${styles.btn_chabot_message_copy} copy-button-container`}>
               <Popover
                 size="medium"
                 position="top"
@@ -276,33 +276,30 @@ export default function ChatMessage(props: ChatMessageProps) {
             }}
           />
           <div className={styles.thumbsContainer}>
-            {(selectedIcon === 1 || selectedIcon === null) && (
-              <Button
-                variant="icon"
-                iconName={selectedIcon === 1 ? "thumbs-up-filled" : "thumbs-up"}
-                onClick={() => {
-                  // props.onThumbsUp();
-                  // const id = addNotification("success","Thank you for your valuable feedback!")
-                  // Utils.delay(3000).then(() => removeNotification(id));
-                  setSelectedIcon(1);
-                  setModalVisible(true);
-                }}
-              />
-            )}
-            {(selectedIcon === 0 || selectedIcon === null) && (
-              <Button
-                iconName={
-                  selectedIcon === 0 ? "thumbs-down-filled" : "thumbs-down"
-                }
-                variant="icon"
-                onClick={() => {
-                  // props.onThumbsDown(selectedIssue || "", selectedRankValue, feedbackMessage.trim());
-                  // User clicked on thumbs down button, set state to thumbs down button
-                  setSelectedIcon(0);
-                  setModalVisible(true);
-                }}
-              />
-            )}
+            <div className="feedback-thumbs-wrapper">
+              {(selectedIcon === 1 || selectedIcon === null) && (
+                <Button
+                  variant="icon"
+                  iconName={selectedIcon === 1 ? "thumbs-up-filled" : "thumbs-up"}
+                  onClick={() => {
+                    setSelectedIcon(1);
+                    setModalVisible(true);
+                  }}
+                />
+              )}
+              {(selectedIcon === 0 || selectedIcon === null) && (
+                <Button
+                  iconName={
+                    selectedIcon === 0 ? "thumbs-down-filled" : "thumbs-down"
+                  }
+                  variant="icon"
+                  onClick={() => {
+                    setSelectedIcon(0);
+                    setModalVisible(true);
+                  }}
+                />
+              )}
+            </div>
           </div>
           {isAdmin && (<ReactMarkdown
             children={formatUserFeedback(props.message)}

@@ -1,0 +1,195 @@
+// Theme variables
+:root {
+  // Light theme (default)
+  --mask-color: rgba(0, 0, 0, 0.15);
+  --modal-bg: #ffffff;
+  --title-color: #16191f;
+  --text-color: #5f6b7a;
+  --hint-color: #8c9199;
+  --border-color: #d5dbdb;
+}
+
+:root[style*="--app-color-scheme: dark"] {
+  --mask-color: rgba(255, 255, 255, 0.15);
+  --modal-bg: #0f1b2a;
+  --title-color: #ffffff;
+  --text-color: #d1d5db;
+  --hint-color: #9ca3af;
+  --border-color: #1f2937;
+}
+
+// Full screen mask overlay with clip-path hole
+.walkthrough_mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--mask-color, rgba(0, 0, 0, 0.15));
+  z-index: 2000;
+  pointer-events: all; // Block interactions outside the hole
+  clip-path: polygon(0% 0%, 0% 100%, 100% 100%, 100% 0%); // Initial full coverage
+  
+  &[data-has-target="true"] {
+    // The mask will be updated with a polygon path that creates a hole
+    // This is handled in the component using inline styles
+  }
+}
+
+// Highlight border for target element - matches hole exactly
+.walkthrough_highlight {
+  position: fixed;
+  background-color: transparent;
+  border: 2px solid #0972d3; // AWS blue color
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgba(9, 114, 211, 0.2);
+  z-index: 2001;
+  pointer-events: none; // Let events pass through to target
+}
+
+// Modal container
+.walkthrough_modal {
+  position: fixed;
+  z-index: 2002;
+  width: 400px;
+  max-height: 350px;
+  pointer-events: all;
+
+  // Modal content
+  .walkthrough_content {
+    background-color: var(--modal-bg, #ffffff);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    border: 1px solid var(--border-color, #d5dbdb);
+  }
+
+  // Close button
+  .walkthrough_close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5f6b7a;
+    transition: background-color 0.2s, color 0.2s;
+
+    &:hover {
+      background-color: #f4f4f4;
+      color: #16191f;
+    }
+
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px #0972d3;
+    }
+  }
+
+  // Title styling
+  .walkthrough_title {
+    color: var(--title-color, #16191f);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    line-height: 1.2;
+  }
+
+  // Text styling
+  .walkthrough_text {
+    color: var(--text-color, #5f6b7a);
+    font-size: 14px;
+    line-height: 1.4;
+    margin: 0 0 16px 0;
+  }
+
+  // Hint styling
+  .walkthrough_hint {
+    color: var(--hint-color, #8c9199);
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 0 auto;
+    text-align: center;
+    max-width: 90%;
+    font-style: italic;
+  }
+
+  // Progress indicator
+  .walkthrough_progress {
+    text-align: center;
+    font-size: 12px;
+    color: #8c9199;
+    margin-bottom: 16px;
+  }
+}
+
+// Responsive design
+@media (max-width: 480px) {
+  .walkthrough_modal {
+    width: calc(100vw - 40px);
+    max-width: 360px;
+    left: 20px !important;
+    right: 20px;
+    margin: 0 auto;
+
+    .walkthrough_content {
+      padding: 12px;
+    }
+
+    .walkthrough_title {
+      font-size: 16px;
+    }
+
+    .walkthrough_text {
+      font-size: 12px;
+    }
+  }
+}
+
+// Animation for smooth transitions
+.walkthrough_modal {
+  animation: walkthroughFadeIn 0.3s ease-out;
+}
+
+@keyframes walkthroughFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  .walkthrough_mask {
+    background-color: rgba(0, 0, 0, 0.25);
+  }
+
+  .walkthrough_highlight {
+    background-color: transparent;
+  }
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  .walkthrough_modal,
+  .walkthrough_highlight {
+    animation: none;
+  }
+}
+
+// Override AWS Cloudscape header z-index
+:global {
+  #awsui-top-navigation {
+    z-index: 1999 !important;
+  }
+}

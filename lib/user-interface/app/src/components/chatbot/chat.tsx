@@ -1,11 +1,11 @@
 import { useContext, useEffect, useState } from "react";
-import {  
+import {
   ChatBotHistoryItem,
-  ChatBotMessageType,  
+  ChatBotMessageType,
   FeedbackData
 } from "./types";
 import { Auth } from "aws-amplify";
-import { SpaceBetween, StatusIndicator, Alert, Flashbar, Header, Link, Box } from "@cloudscape-design/components";
+import { SpaceBetween, StatusIndicator, Alert, Flashbar, Header, Link, Box, Button } from "@cloudscape-design/components";
 import { v4 as uuidv4 } from "uuid";
 import { AppContext } from "../../common/app-context";
 import { ApiClient } from "../../common/api-client/api-client";
@@ -15,6 +15,7 @@ import styles from "../../styles/chat.module.scss";
 import { CHATBOT_NAME } from "../../common/constants";
 import { useNotifications } from "../notif-manager";
 import { useAdmin } from "../../common/admin-context";
+import Walkthrough from "../walkthrough/walkthrough";
 
 export default function Chat(props: { sessionId?: string}) {
   const appContext = useContext(AppContext);
@@ -27,9 +28,13 @@ export default function Chat(props: { sessionId?: string}) {
 
   const { notifications, addNotification } = useNotifications();
 
-  const [messageHistory, setMessageHistory] = useState<ChatBotHistoryItem[]>(
-    []
-  );
+  const [messageHistory, setMessageHistory] = useState<ChatBotHistoryItem[]>([]);
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
+  
+  // Log when suggested prompts are updated
+  useEffect(() => {
+    console.log("Suggested prompts state updated:", suggestedPrompts);
+  }, [suggestedPrompts]);
   const [title, setTitle] = useState<string>("");
   /** Loads session history */
   useEffect(() => {
@@ -134,9 +139,9 @@ export default function Chat(props: { sessionId?: string}) {
 
 
   return (
-    <div className={styles.chat_container}> 
-      <SpaceBetween direction="vertical" size="m">
-        
+    <div className={styles.chat_container} data-running={running}>
+      <SpaceBetween direction="vertical" size="m" className="chat-messages">
+
         {messageHistory.length == 0 && !session?.loading && (
         <Alert
             statusIconAriaLabel="Info"
@@ -145,46 +150,52 @@ export default function Chat(props: { sessionId?: string}) {
           AI Models can make mistakes. Be mindful in validating important information. Your questions and responses will be reviewed by Procurement to ensure that BidBot is continually giving accurate information.
         </Alert> )}
 
-        
+
         {messageHistory.length > 0 && isAdmin && (
           <Box variant="h1">
             <Link href="/admin/all-sessions"> <strong>{title}</strong> </Link>
           </Box>
         )}
 
-      
+
         {messageHistory.map((message, idx) => (
           <ChatMessage
             key={idx}
-            message={message}            
+            message={message}
             onThumbsUp={(feedbackCategory : string, feedbackRank : number, feedbackMessage: string) => handleFeedback("positive", idx, message, feedbackCategory, feedbackRank, feedbackMessage)}
-            onThumbsDown={(feedbackCategory : string, feedbackRank : number, feedbackMessage: string) => handleFeedback("negative", idx, message, feedbackCategory, feedbackRank, feedbackMessage)}                        
+            onThumbsDown={(feedbackCategory : string, feedbackRank : number, feedbackMessage: string) => handleFeedback("negative", idx, message, feedbackCategory, feedbackRank, feedbackMessage)}
           />
         ))}
       </SpaceBetween>
       <div className={styles.welcome_text}>
         {messageHistory.length == 0 && !session?.loading && (
-          <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px', color: 'black', textAlign: 'left' }}>
-            <h1 style={{ textAlign: 'center', marginBottom: '20px', fontSize: '26px', fontWeight: 'bold', color: 'black' }}>
+          <div className={styles.welcome_container}>
+            <h1 className={styles.welcome_header}>
               Welcome to BidBot!
             </h1>
-            <p style={{ marginBottom: '12px', fontSize: '15px', lineHeight: '1.4' }}>
+            <div className={styles.welcome_tutorial_button}>
+              <Button
+                onClick={() => {
+                  if ((window as any).__walkthroughStart) {
+                    (window as any).__walkthroughStart();
+                  }
+                }}
+                variant="primary"
+              >
+                Take a Quick Tutorial
+              </Button>
+            </div>
+            <p className={styles.welcome_description}>
               This generative AI tool was designed by the City of Boston to support staff working on procurements in a safe and secure environment. BidBot can be used to:
             </p>
-            <ul style={{ marginBottom: '12px', paddingLeft: '18px', fontSize: '15px', lineHeight: '1.4' }}>
-              <li style={{ marginBottom: '2px' }}>Answer general questions about procurement processes</li>
-              <li style={{ marginBottom: '2px' }}>Help you strategize about sourcing methods for a specific procurement</li>
-              <li style={{ marginBottom: '2px' }}>Create a first draft for procurement documents (eg, scope of work, evaluation criteria, etc)</li>
-              <li style={{ marginBottom: '2px' }}>And more!</li>
+            <ul className={styles.welcome_list}>
+              <li>Answer general questions about procurement processes</li>
+              <li>Help you strategize about sourcing methods for a specific procurement</li>
+              <li>Create a first draft for procurement documents (eg, scope of work, evaluation criteria, etc)</li>
+              <li>And more!</li>
             </ul>
-            <p style={{ marginBottom: '12px', fontSize: '15px', lineHeight: '1.4' }}>
-              To get started, click on one of the prompts below, or create your own prompt in the text box at the bottom of the screen.
-            </p>
-            <p style={{ marginBottom: '12px', fontSize: '15px', lineHeight: '1.4' }}>
-              After BidBot replies to your prompt, you can ask a follow-up question and continue back and forth, like in a text conversation.
-            </p>
-            <p style={{ fontSize: '15px', lineHeight: '1.4' }}>
-              To learn more about any of BidBot's responses, click "Sources". You can also go to Finance Academy or contact your Procurement Analyst to find out more.
+            <p className={styles.welcome_footer}>
+              To get started, click on one of the prompts below, or create your own prompt in the text box at the bottom of the screen. After BidBot replies to your prompt, you can ask a follow-up question and continue back and forth, like in a text conversation. To learn more about any of BidBot's responses, click "Sources". You can also go to Finance Academy or contact your Procurement Analyst to find out more.
             </p>
           </div>
         )}
@@ -201,9 +212,18 @@ export default function Chat(props: { sessionId?: string}) {
           setRunning={setRunning}
           messageHistory={messageHistory}
           setMessageHistory={(history) => setMessageHistory(history)}
-          showPromptButtons={messageHistory.length === 0 && !session?.loading}      
+          showPromptButtons={!session?.loading && !running}
+          suggestedPrompts={messageHistory.length === 0 ? undefined : suggestedPrompts}
+          onSuggestedPromptsUpdate={setSuggestedPrompts}
         />
       </div>
+
+      {/* Walkthrough Component */}
+      <Walkthrough
+        configId="chat-interface-walkthrough"
+        onComplete={() => console.log('Walkthrough completed')}
+        onSkip={() => console.log('Walkthrough skipped')}
+      />
     </div>
   );
 }

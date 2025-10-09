@@ -1,3 +1,6 @@
+// Import walkthrough styles at the top
+@use '../components/walkthrough/walkthrough.module' as walkthrough;
+
 * {
   box-sizing: border-box;
 }
@@ -103,5 +106,3 @@ new-chat-button[data-alignment = "right"] {
   color:rgb(74, 205, 234);
   font-weight: 600;
 }
-
-

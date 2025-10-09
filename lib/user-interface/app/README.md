@@ -41,12 +41,32 @@ You may fetch the aws-exports.json file created in the cdk deployment from the s
 but make sure to replace the redirectedSignIn in order to bypass oauth redirect to prod locally.
 
 ## Front-end
-The front-end of the base application is located in this repository. 
+The front-end of the base application is located in this repository.
 To edit the user interface explore the /src/components and /src/pages/chatbot folders.
 Quick customizations:
 - To change the logo swap out the logo.png file.
 - /src/common/constants.ts change the name of the project on line 109.
 - /src/components/chatbot/chat-input-panel.tsx customize the system prompt on line 395 and input the kendra project id on line 403.
+
+### Walkthrough Feature
+The application includes an interactive walkthrough feature that guides new users through the chat interface:
+
+**Features:**
+- Interactive guided tour with step-by-step instructions
+- Element highlighting with holes in overlay mask
+- Conditional progression based on user interactions
+- Configurable via YAML configuration file
+- Fully accessible with keyboard navigation and screen reader support
+
+**Usage:**
+1. Click the "Take a Tour" button in the welcome text on new sessions
+2. Follow the step-by-step guidance through the interface
+3. Learn about prompt buttons, chat input, feedback system, and sources
+
+**Configuration:**
+- Edit `/public/walkthrough-config.yaml` to customize steps and content
+- Add CSS classes to components for highlighting (e.g., `.prompt-buttons-container`)
+- Modify `/src/components/walkthrough/` components for behavior changes
 
 # AWS Tools Used
 AWS Amplify

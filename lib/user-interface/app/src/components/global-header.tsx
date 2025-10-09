@@ -64,6 +64,7 @@ export default function GlobalHeader() {
             type: "button",
             text: theme === Mode.Dark ? "Light Mode" : "Dark Mode",
             onClick: onChangeThemeClick,
+            ariaLabel: "Dark Mode",
           },
   
           {

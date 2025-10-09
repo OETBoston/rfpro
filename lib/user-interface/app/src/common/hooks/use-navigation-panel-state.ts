@@ -11,8 +11,19 @@ export function useNavigationPanelState(): [
   );
 
   const onChange = (state: Partial<NavigationPanelState>) => {
-    console.log(state);
-    setCurrentState(StorageHelper.setNavigationPanelState(state));
+    console.log('Navigation panel state change:', {
+      oldState: currentState,
+      newState: state,
+      isOpening: state.collapsed === false
+    });
+    const newState = StorageHelper.setNavigationPanelState(state);
+    setCurrentState(newState);
+    // Dispatch event when nav is opened
+    if (state.collapsed === false) {
+      console.log('Dispatching navigationOpened event');
+      window.dispatchEvent(new Event('navigationOpened'));
+      console.log('navigationOpened event dispatched');
+    }
   };
 
   return [currentState, onChange];

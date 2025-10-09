@@ -50,6 +50,8 @@ export interface ChatInputPanelProps {
   messageHistory: ChatBotHistoryItem[];
   setMessageHistory: (history: ChatBotHistoryItem[]) => void;  
   showPromptButtons?: boolean;
+  suggestedPrompts?: string[];
+  onSuggestedPromptsUpdate?: (prompts: string[]) => void;
 }
 
 export abstract class ChatScrollState {
@@ -85,8 +87,11 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   // Handle prompt button clicks
   const handlePromptClick = (prompt: string) => {
     setState(prev => ({ ...prev, value: prompt }));
-    // Send the message directly with the prompt
-    handleSendMessage(prompt);
+    // Focus the textarea after setting the value
+    const textarea = document.querySelector(`.${styles.input_textarea}`) as HTMLTextAreaElement;
+    if (textarea) {
+      textarea.focus();
+    }
   };
   
 
@@ -278,18 +283,67 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
 
         let messageId = "";
         let sourceJson = {};
-        let receivedDataSplit = receivedData.split("<!MessageId!>:");
-        let metaDataSplit = [];
-        // Parse streamed data for message Id at the end
-        if (receivedData.includes("<!MessageId!>:")){
-          metaDataSplit = receivedDataSplit[1].split("<!Sources!>:");
-          messageId = metaDataSplit[0].trim();
-          console.log("Received Message Id: ");
-          console.log(messageId);
+        let suggestedPrompts: string[] = [];
+
+        console.log("Full received data:", receivedData);
+        
+        // Parse Message ID
+        if (receivedData.includes("<!MessageId!>:")) {
+          const messageIdMatch = receivedData.match(/<!MessageId!>:\s*([^\s<!]+)/);
+          if (messageIdMatch) {
+            messageId = messageIdMatch[1];
+            console.log("Parsed Message ID:", messageId);
+          }
         }
-        if (receivedData.includes("<!Sources!>:")){
-          let sourceData = JSON.parse(metaDataSplit[1].trim());
-          sourceJson = {"Sources": sourceData}
+
+        // Parse Sources
+        if (receivedData.includes("<!Sources!>:")) {
+          try {
+            const sourcesMatch = receivedData.match(/<!Sources!>:\s*(\[.*?\])(?:\s|<!|$)/);
+            if (sourcesMatch) {
+              const sourceData = JSON.parse(sourcesMatch[1]);
+              sourceJson = {"Sources": sourceData};
+              console.log("Parsed Sources:", sourceJson);
+            }
+          } catch (e) {
+            console.log("Error parsing sources:", e);
+          }
+        }
+
+        // Parse Prompts
+        if (receivedData.includes("<!Prompts!>:")) {
+          try {
+            console.log("Found Prompts tag in data");
+            const promptsMatch = receivedData.match(/<!Prompts!>:\s*(\[.*?\])(?:\s|<!|$)/);
+            console.log("Prompts regex match:", promptsMatch);
+            if (promptsMatch) {
+              console.log("Raw prompts data:", promptsMatch[1]);
+              try {
+                suggestedPrompts = JSON.parse(promptsMatch[1]);
+                console.log("Successfully parsed suggested prompts:", suggestedPrompts);
+                if (Array.isArray(suggestedPrompts) && suggestedPrompts.length > 0) {
+                  if (props.onSuggestedPromptsUpdate) {
+                    console.log("Updating suggested prompts via callback");
+                    props.onSuggestedPromptsUpdate(suggestedPrompts);
+                  } else {
+                    console.log("No onSuggestedPromptsUpdate callback provided");
+                  }
+                } else {
+                  console.log("Parsed prompts is not a non-empty array:", suggestedPrompts);
+                }
+              } catch (parseError) {
+                console.error("JSON parse error for prompts:", parseError);
+                console.log("Failed to parse JSON string:", promptsMatch[1]);
+              }
+            } else {
+              console.log("No valid prompts format found in data");
+            }
+          } catch (e) {
+            console.error("Error in prompts regex match:", e);
+            console.log("Full received data for debugging:", receivedData);
+          }
+        } else {
+          console.log("No prompts tag found in data");
         }
         // Update the chat history state with the new message      
         messageHistoryRef.current = [
@@ -307,7 +361,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           },
           {
             type: ChatBotMessageType.AI,            
-            content: receivedDataSplit[0],
+            content: receivedData.split("<!MessageId!>:")[0],
             metadata: sourceJson,
             messageId: messageId,
             userFeedback: {},
@@ -330,7 +384,9 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         if (firstTime) {             
           Utils.delay(1500).then(() => setNeedsRefresh(true));
         }
-        props.setRunning(false);        
+        props.setRunning(false);
+        // Dispatch event for message completion
+        window.dispatchEvent(new Event('messageReceived'));
         console.log('Disconnected from the WebSocket server');
       });
 
@@ -338,6 +394,8 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
       console.error('Error sending message:', error);
       alert('Sorry, something has gone horribly wrong! Please try again or refresh the page.');
       props.setRunning(false);
+      // Dispatch event for error cases too
+      window.dispatchEvent(new Event('messageReceived'));
     }     
   };
 
@@ -350,11 +408,11 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   }[readyState];
 
   return (
-    <SpaceBetween direction="vertical" size="xs">
+    <SpaceBetween direction="vertical" size="xs" className="chat-input-container">
       {props.showPromptButtons && (
         <PromptButtons 
           onPromptClick={handlePromptClick}
-          disabled={props.running || props.session.loading}
+          customPrompts={props.suggestedPrompts}
         />
       )}
       <Container>
@@ -393,13 +451,18 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           />
           <div style={{ marginLeft: "8px" }}>            
             <Button
+              id="chat-send-button"
               disabled={
                 readyState !== ReadyState.OPEN ||                
                 props.running ||
                 state.value.trim().length === 0 ||
                 props.session.loading
               }
-              onClick={() => handleSendMessage()}
+              onClick={() => {
+                handleSendMessage();
+                // Dispatch a custom event for the walkthrough
+                window.dispatchEvent(new Event('messageSendButtonClicked'));
+              }}
               iconAlign="right"
               iconName={!props.running ? "angle-right-double" : undefined}
               variant="primary"

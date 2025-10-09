@@ -150,6 +150,7 @@ export default function NavigationPanel() {
       {loaded ?
         <SideNavigation
           activeHref={activeHref}
+          className="session-history-nav"
           // onFollow={onFollow}
           onFollow={event => {
             if (!event.detail.external) {

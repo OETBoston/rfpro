@@ -1,0 +1,22 @@
+{
+    "Auth": {
+        "region": "us-east-1",
+        "userPoolId": "us-east-1_2G2efG17v",
+        "userPoolWebClientId": "20q8us1ldac5ngmkdbm4bms6f8",
+        "oauth": {
+            "domain": "rfpro-auth.auth.us-east-1.amazoncognito.com",
+            "scope": [
+                "aws.cognito.signin.user.admin",
+                "email",
+                "openid",
+                "profile"
+            ],
+            "redirectSignIn": "http://localhost:3000",
+            "redirectSignOut": "https://sso-test.boston.gov/idp/startSLO.ping",
+            "responseType": "code"
+        }
+    },
+    "httpEndpoint": "https://delthvwfgk.execute-api.us-east-1.amazonaws.com/",
+    "wsEndpoint": "wss://qk051omhrg.execute-api.us-east-1.amazonaws.com/prod",
+    "federatedSignInProvider": "Boston"
+}
