@@ -42,7 +42,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
                     console.log("Elevated Permission for Admin Users");
                     setIsAdmin(true);
                 } else if (userGroups.includes("OutsideUsers") && !userGroups.includes("BasicUsers")) {
-                    alert("As of Dec 2024, only employees within a designated security group can access Bidbot. Please reach out to Maia Materman (maia.materman@boston.gov) if you need temporary access.");
+                    alert("If you have not completed your module 0 training, please see the Gen AI Beacon Page for more information. If you have completed your training and are still having issues accessing BidBot, please email bidbot@boston.gov. Thank you!");
                     await Auth.signOut({ global: true });
                 }
             } catch (error) {

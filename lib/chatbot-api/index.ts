@@ -35,12 +35,11 @@ export class ChatBotApi extends Construct {
     const buckets = new S3BucketStack(this, "BucketStack");
     const kendra = new KendraIndexStack(this, "KendraStack", { s3Bucket: buckets.kendraBucket });
 
-    const restBackend = new RestBackendAPI(this, "RestBackend", {})
     const websocketBackend = new WebsocketBackendAPI(this, "WebsocketBackend", {})
 
     const lambdaFunctions = new LambdaFunctionStack(this, "LambdaFunctions",
       {
-        wsApiEndpoint: websocketBackend.wsAPIStage.url,
+        wsApiEndpoint: websocketBackend.callbackEndpoint,
         sessionsTable: tables.sessionsTable,
         messagesTable: tables.messagesTable,
         reviewsTable: tables.reviewsTable,
@@ -48,6 +47,7 @@ export class ChatBotApi extends Construct {
         kendraSource: kendra.kendraSource,
         downloadBucket: buckets.downloadBucket,
         knowledgeBucket: buckets.kendraBucket,
+        driveSyncBucket: buckets.driveSyncBucket,
       }
     )
 
@@ -69,6 +69,11 @@ export class ChatBotApi extends Construct {
     });
 
     websocketBackend.wsAPI.grantManageConnections(lambdaFunctions.chatFunction);
+
+    const restBackend = new RestBackendAPI(this, "RestBackend", {
+      driveBackfillFunction: lambdaFunctions.driveBackfillFunction,
+      driveSyncFunction: lambdaFunctions.driveSyncFunction
+    });
 
     const sessionAPIIntegration = new HttpLambdaIntegration('SessionAPIIntegration', lambdaFunctions.sessionFunction);
     restBackend.restAPI.addRoutes({
@@ -149,12 +154,30 @@ export class ChatBotApi extends Construct {
       authorizer: props.httpAuthorizer,
     })
 
-    new cdk.CfnOutput(this, "WS-API - apiEndpoint", {
-      value: websocketBackend.wsAPI.apiEndpoint || "",
-    });
-    new cdk.CfnOutput(this, "HTTP-API - apiEndpoint", {
-      value: restBackend.restAPI.apiEndpoint || "",
-    });
+    // Output API endpoint information
+    if (restBackend.customDomainUrl) {
+      new cdk.CfnOutput(this, "REST-API - CustomDomain", {
+        value: restBackend.customDomainUrl,
+        description: "REST API Custom Domain URL with mTLS (default endpoint disabled)",
+      });
+    } else {
+      new cdk.CfnOutput(this, "REST-API - DefaultEndpoint", {
+        value: restBackend.restAPI.apiEndpoint,
+        description: "REST API Default Endpoint (no custom domain configured)",
+      });
+    }
+    
+    if (websocketBackend.customDomainUrl) {
+      new cdk.CfnOutput(this, "WS-API - CustomDomain", {
+        value: websocketBackend.customDomainUrl,
+        description: "WebSocket API Custom Domain URL (default endpoint disabled, mTLS not supported by AWS)",
+      });
+    } else {
+      new cdk.CfnOutput(this, "WS-API - DefaultEndpoint", {
+        value: websocketBackend.wsAPIStage.url,
+        description: "WebSocket API Default Endpoint (no custom domain configured)",
+      });
+    }
 
     const promptDataBucket = new s3.Bucket(this, "PromptDataBucket", {
       bucketName: process.env.CDK_STACK_NAME!.toLowerCase() + "-prompt-data-bucket",
@@ -183,8 +206,9 @@ export class ChatBotApi extends Construct {
           responseType: "code"
         }
       },
-      httpEndpoint: restBackend.restAPI.url,
-      wsEndpoint: websocketBackend.wsAPIStage.url,
+      // Use custom domain if configured, otherwise use default endpoint
+      httpEndpoint: restBackend.customDomainUrl || restBackend.restAPI.apiEndpoint,
+      wsEndpoint: websocketBackend.customDomainUrl || websocketBackend.wsAPIStage.url,
       federatedSignInProvider: process.env.COGNITO_OIDC_PROVIDER_NAME!
     });
 

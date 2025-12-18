@@ -6,6 +6,7 @@ import { Construct } from "constructs";
 export class S3BucketStack extends cdk.Stack {
   public readonly kendraBucket: s3.Bucket;
   public readonly downloadBucket: s3.Bucket;
+  public readonly driveSyncBucket: s3.Bucket;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -51,6 +52,15 @@ export class S3BucketStack extends cdk.Stack {
         allowedOrigins: ['*'], 
         allowedHeaders: ["*"]     
       }]
+    });
+
+    // Create Drive sync state bucket
+    this.driveSyncBucket = new s3.Bucket(scope, 'DriveSyncBucket', {
+      versioned: true,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
     });
   }
 }

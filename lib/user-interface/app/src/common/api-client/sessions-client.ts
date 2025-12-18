@@ -14,7 +14,8 @@ export class SessionsClient {
 
   private readonly API;
   constructor(protected _appConfig: AppConfig) {
-    this.API = _appConfig.httpEndpoint.slice(0, -1);
+    // Remove trailing slash if present
+    this.API = _appConfig.httpEndpoint.replace(/\/$/, '');
   }
   // Gets all sessions tied to a given user ID
   // Return format: [{"session_id" : "string", "user_id" : "string", "time_stamp" : "dd/mm/yy", "title" : "string"}...]

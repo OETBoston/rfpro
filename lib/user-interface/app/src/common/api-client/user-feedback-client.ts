@@ -6,8 +6,8 @@ export class UserFeedbackClient {
 
   private readonly API;
   constructor(protected _appConfig: AppConfig) {
-    /** The CDK script adds an extra slash at the end so this just removes it */
-    this.API = _appConfig.httpEndpoint.slice(0, -1);
+    /** Remove trailing slash if present */
+    this.API = _appConfig.httpEndpoint.replace(/\/$/, '');
   }
 
   // Takes in a piece of feedback (which has a prompt, completion, session ID, and the actual feedback (1 or 0))

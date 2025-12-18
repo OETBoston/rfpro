@@ -42,7 +42,7 @@ export interface ChatMessageProps {
 }
 
 export default function ChatMessage(props: ChatMessageProps) {
-  const isAdmin = useAdmin();
+  const { isAdmin } = useAdmin();
   const [loading, setLoading] = useState<boolean>(false);
   const { addNotification, removeNotification } = useNotifications();
   const [selectedRankValue, setSelectedRankValue] = useState<number | null>(null);
@@ -77,6 +77,13 @@ export default function ChatMessage(props: ChatMessageProps) {
     setSelectedRankValue(value);
   };
 
+  const formatUserFeedback = (message) => {
+    const userFeedbackType = message.userFeedback?.feedbackType ? message.userFeedback.feedbackType: "N/A";
+    const userFeedbackCategory = message.userFeedback?.feedbackCategory ? " -- " + message.userFeedback.feedbackCategory: "";
+    const userFeedbackRank = message.userFeedback?.feedbackRank ? " (" + message.userFeedback.feedbackRank + "/5)": "";
+    const userFeedbackMessage = message.userFeedback?.feedbackMessage ? ": " + message.userFeedback.feedbackMessage: "";
+    return "#### USER COMMENT:\n```\n" + userFeedbackType + userFeedbackCategory + userFeedbackRank + userFeedbackMessage + "\n```";
+  };
 
   const content =
     props.message.content && props.message.content.length > 0
@@ -85,14 +92,6 @@ export default function ChatMessage(props: ChatMessageProps) {
 
   const showSources = props.message.metadata?.Sources && (props.message.metadata.Sources as any[]).length > 0;
   const defaultSource = [{ id: "id", disabled: false, text: "Find these in Finance Academy!", href: "https://sites.google.com/boston.gov/finance-academy/document-library?authuser=0", external: true, externalIconAriaLabel: "(opens in new tab)" }];
-
-  const formatUserFeedback = (message) => {
-    const userFeedbackType = message.userFeedback?.feedbackType ? message.userFeedback.feedbackType: "N/A";
-    const userFeedbackCategory = message.userFeedback?.feedbackCategory ? " -- " + message.userFeedback.feedbackCategory: "";
-    const userFeedbackRank = message.userFeedback?.feedbackRank ? " (" + message.userFeedback.feedbackRank + "/5)": "";
-    const userFeedbackMessage = message.userFeedback?.feedbackMessage ? ": " + message.userFeedback.feedbackMessage: "";
-    return "#### USER COMMENT:\n```\n" + userFeedbackType + userFeedbackCategory + userFeedbackRank + userFeedbackMessage + "\n```";
-  };
   
   return (
     <div>

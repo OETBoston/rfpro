@@ -15,17 +15,48 @@ import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as appsync from "aws-cdk-lib/aws-appsync";
 // import { parse } from "graphql";
 import { readFileSync } from "fs";
-import * as s3 from "aws-cdk-lib/aws-s3";
+import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 
 export interface RestBackendAPIProps {
-
+  readonly driveBackfillFunction: lambda.Function;
+  readonly driveSyncFunction: lambda.Function;
 }
 
 export class RestBackendAPI extends Construct {
   public readonly restAPI: apigwv2.HttpApi;
+  public readonly customDomainUrl?: string;
+  
   constructor(scope: Construct, id: string, props: RestBackendAPIProps) {
     super(scope, id);
 
+    // Optional: Reference existing custom domain (managed outside CDK)
+    // If environment variable is not provided, the default API Gateway endpoint will be used
+    const customDomainName = process.env.REST_API_CUSTOM_DOMAIN_NAME;
+
+    let domainName: apigwv2.IDomainName | undefined;
+    let disableDefaultEndpoint = false;
+
+    // Only reference existing custom domain if domain name is provided
+    if (customDomainName) {
+      // Import the existing custom domain by name
+      // This looks up the domain that was created outside of CDK
+      // We need to provide the regionalDomainName (the API Gateway target) and regionalHostedZoneId
+      // These are standard values for API Gateway in us-east-1
+      domainName = apigwv2.DomainName.fromDomainNameAttributes(this, 'RestApiCustomDomain', {
+        name: customDomainName,
+        regionalDomainName: customDomainName, // The custom domain itself
+        regionalHostedZoneId: 'Z2FDTNDATAQYW2', // Standard API Gateway v2 hosted zone for us-east-1
+      });
+
+      this.customDomainUrl = `https://${customDomainName}`;
+      disableDefaultEndpoint = true; // Only disable default endpoint when custom domain is configured
+
+      console.log(`REST API: Using existing custom domain at ${this.customDomainUrl}`);
+    } else {
+      console.log('REST API: Using default API Gateway endpoint (no custom domain configured)');
+    }
+
+    // Create HTTP API
     const httpApi = new apigwv2.HttpApi(this, 'HTTP-API', {
       corsPreflight: {
         allowHeaders: ['*'],
@@ -39,8 +70,19 @@ export class RestBackendAPI extends Construct {
         allowOrigins: ['*'],
         maxAge: Duration.days(10),
       },
+      // Only disable default endpoint if custom domain is configured
+      disableExecuteApiEndpoint: disableDefaultEndpoint,
     });
     this.restAPI = httpApi;
+
+    // Create API mapping if custom domain is configured
+    if (domainName) {
+      new apigwv2.ApiMapping(this, 'RestApiMapping', {
+        api: httpApi,
+        domainName: domainName,
+        stage: httpApi.defaultStage!,
+      });
+    }
     /*const appSyncLambdaResolver = new lambda.Function(
       this,
       "GraphQLApiHandler",
@@ -232,5 +274,23 @@ export class RestBackendAPI extends Construct {
 
     addPermissions(appSyncLambdaResolver);*/
 
+    // Add Drive sync routes
+    new apigwv2.HttpRoute(this, 'DriveBackfillRoute', {
+      httpApi: httpApi,
+      integration: new HttpLambdaIntegration(
+        'DriveBackfillIntegration',
+        props.driveBackfillFunction
+      ),
+      routeKey: apigwv2.HttpRouteKey.with('/drive/backfill', apigwv2.HttpMethod.POST)
+    });
+
+    new apigwv2.HttpRoute(this, 'DriveSyncRoute', {
+      httpApi: httpApi,
+      integration: new HttpLambdaIntegration(
+        'DriveSyncIntegration',
+        props.driveSyncFunction
+      ),
+      routeKey: apigwv2.HttpRouteKey.with('/drive/sync', apigwv2.HttpMethod.POST)
+    });
   }
 }

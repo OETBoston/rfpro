@@ -132,7 +132,7 @@ export class AuthorizationStack extends Construct {
           authorizationCodeGrant: true,
           implicitCodeGrant: true
         },
-        callbackUrls: ["https://" + (process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL ? process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL : props.distributionDomainName), "http://localhost:3000"],
+        callbackUrls: ["https://" + (process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL ? process.env.CLOUDFRONT_CUSTOM_DOMAIN_URL : props.distributionDomainName)],
         logoutUrls: [process.env.COGNITO_USER_POOL_CLIENT_LOGOUT_URL!],
       },
     });
