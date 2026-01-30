@@ -117,25 +117,44 @@ class DriveClient:
                             target_mime_type = shortcut_details.get('targetMimeType')
                             
                             if target_id and target_mime_type:
-                                # If target is a folder, add to processing queue
-                                if target_mime_type == 'application/vnd.google-apps.folder':
-                                    folders_to_process.append(target_id)
-                                    subfolder_count += 1
-                                    print(f"    Found folder shortcut: {item_name} -> Folder (ID: {target_id})")
-                                # If target is a supported file type, add to results
-                                elif target_mime_type in self.SUPPORTED_MIME_TYPES:
-                                    # Create a new item with target information
-                                    target_item = {
-                                        'id': target_id,
-                                        'name': item_name,
-                                        'mimeType': target_mime_type,
-                                        'parents': item.get('parents', [])
-                                    }
-                                    results.append(target_item)
-                                    folder_file_count += 1
-                                    print(f"    Found file shortcut: {item_name} -> {target_mime_type} (ID: {target_id})")
-                                else:
-                                    print(f"    Skipping shortcut to unsupported type: {item_name} -> {target_mime_type}")
+                                # Verify we can actually access the target before adding it
+                                try:
+                                    target_file = self.service.files().get(
+                                        fileId=target_id,
+                                        fields='id, name, mimeType, capabilities',
+                                        supportsAllDrives=True
+                                    ).execute()
+                                    
+                                    # Check if we have download permission
+                                    capabilities = target_file.get('capabilities', {})
+                                    can_download = capabilities.get('canDownload', False)
+                                    
+                                    if not can_download:
+                                        print(f"    Skipping shortcut (no download permission): {item_name} -> {target_mime_type} (ID: {target_id})")
+                                        continue
+                                    
+                                    # If target is a folder, add to processing queue
+                                    if target_mime_type == 'application/vnd.google-apps.folder':
+                                        folders_to_process.append(target_id)
+                                        subfolder_count += 1
+                                        print(f"    Found folder shortcut: {item_name} -> Folder (ID: {target_id})")
+                                    # If target is a supported file type, add to results
+                                    elif target_mime_type in self.SUPPORTED_MIME_TYPES:
+                                        # Create a new item with target information
+                                        target_item = {
+                                            'id': target_id,
+                                            'name': item_name,
+                                            'mimeType': target_mime_type,
+                                            'parents': item.get('parents', [])
+                                        }
+                                        results.append(target_item)
+                                        folder_file_count += 1
+                                        print(f"    Found file shortcut: {item_name} -> {target_mime_type} (ID: {target_id})")
+                                    else:
+                                        print(f"    Skipping shortcut to unsupported type: {item_name} -> {target_mime_type}")
+                                        
+                                except Exception as e:
+                                    print(f"    Skipping shortcut (access error): {item_name} -> {target_id}. Error: {str(e)}")
                             else:
                                 print(f"    Skipping invalid shortcut: {item_name}")
                         # If it's a supported file type, add to results

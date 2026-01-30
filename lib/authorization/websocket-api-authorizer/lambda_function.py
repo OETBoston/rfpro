@@ -52,12 +52,16 @@ def lambda_handler(event, context):
             raise Exception("Wrong audience")
                 
         principalId = claims['sub']
-        role = claims.get('custom:role','')
+        # Get Cognito groups from the token
+        groups = claims.get('cognito:groups', [])
+        
+        # Pass groups as a JSON string in the context
+        groups_json = json.dumps(groups) if groups else '[]'
 
         # Generate policy document
         policy_document = {
             'principalId': principalId,
-            'context' : {"role" : role},
+            'context' : {"groups" : groups_json},
             'policyDocument': {
                 'Version': '2012-10-17',
                 'Statement': [{

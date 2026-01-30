@@ -23,7 +23,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Initialize clients
         drive_client = DriveClient(os.environ['GOOGLE_CREDENTIALS_SECRET_ARN'])
         s3_manager = S3Manager(
-            os.environ['KENDRA_BUCKET_NAME'],
+            os.environ['KNOWLEDGE_BUCKET_NAME'],
             os.environ['SYNC_STATE_BUCKET_NAME']
         )
         metadata_manager = MetadataManager(s3_manager)
@@ -121,23 +121,23 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Save new start token
         metadata_manager.update_start_page_token(new_start_token)
         
-        # Trigger Kendra data source sync
-        print("Triggering Kendra data source sync...")
+        # Trigger Knowledge Base ingestion job
+        print("Triggering Knowledge Base ingestion job...")
         try:
-            kendra_client = boto3.client('kendra')
-            kendra_index_id = os.environ.get('KENDRA_INDEX_ID')
-            kendra_data_source_id = os.environ.get('KENDRA_DATA_SOURCE_ID')
+            bedrock_agent_client = boto3.client('bedrock-agent')
+            kb_id = os.environ.get('KB_ID')
+            kb_data_source_id = os.environ.get('KB_DATA_SOURCE_ID')
             
-            if kendra_index_id and kendra_data_source_id:
-                sync_response = kendra_client.start_data_source_sync_job(
-                    Id=kendra_data_source_id,
-                    IndexId=kendra_index_id
+            if kb_id and kb_data_source_id:
+                sync_response = bedrock_agent_client.start_ingestion_job(
+                    knowledgeBaseId=kb_id,
+                    dataSourceId=kb_data_source_id
                 )
-                print(f"Kendra sync job started: {sync_response.get('ExecutionId')}")
+                print(f"Knowledge Base ingestion job started: {sync_response.get('ingestionJob', {}).get('ingestionJobId')}")
             else:
-                print("WARNING: Kendra index or data source ID not configured, skipping sync")
+                print("WARNING: Knowledge Base ID or data source ID not configured, skipping ingestion")
         except Exception as e:
-            print(f"WARNING: Failed to trigger Kendra sync: {str(e)}")
+            print(f"WARNING: Failed to trigger Knowledge Base ingestion: {str(e)}")
         
         return {
             'statusCode': 200,

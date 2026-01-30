@@ -15,6 +15,9 @@ import DataPage from "./pages/admin/data-view-page";
 import UserFeedbackPage from "./pages/admin/user-feedback-page";
 import SessionPage from "./pages/chatbot/sessions/sessions"
 import AllSessionsPage from "./pages/admin/all-sessions-page";
+import MetricsPage from "./pages/admin/metrics-page";
+import LlmEvaluationPage from "./pages/admin/llm-evaluation-page";
+import DetailedEvaluationPage from "./pages/admin/detailed-evaluation-page";
 import { v4 as uuidv4 } from "uuid";
 import "./styles/app.scss";
 
@@ -43,6 +46,27 @@ function App() {
                 <Route path="data" element={<DataPage />} />
                 <Route path="user-feedback" element={<UserFeedbackPage />} />
                 <Route path="all-sessions" element={<AllSessionsPage />} />
+                <Route path="metrics" element={<MetricsPage />} />
+                <Route path="llm-evaluation" element={<Outlet />}>
+                  <Route index element={<LlmEvaluationPage />} />
+                  {/* Support both URL formats for backward compatibility */}
+                  <Route
+                    path=":evaluationId"
+                    element={
+                      <DetailedEvaluationPage
+                        documentType="detailedEvaluation" 
+                      />
+                    }
+                  />
+                  <Route
+                    path="details/:evaluationId"
+                    element={
+                      <DetailedEvaluationPage
+                        documentType="detailedEvaluation" 
+                      />
+                    }
+                  />
+                </Route>
               </Route>
               <Route path="*" element={<Navigate to={`/chatbot/playground/${uuidv4()}`} replace />} />
             </Routes>

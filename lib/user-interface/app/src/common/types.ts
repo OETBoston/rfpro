@@ -28,7 +28,9 @@ export type LoadingStatus = "pending" | "loading" | "finished" | "error";
 export type AdminDataType =
   | "file"
   | "feedback"
-  | "session";
+  | "session"
+  | "evaluationSummary"
+  | "detailedEvaluation";
 
 // Walkthrough types
 export type WalkthroughCondition = 'messageReceived' | 'messageSendButtonClicked' | 'navIsOpen' | 'toolIsOpen' | 'closeInfoPanelButtonClicked';

@@ -95,10 +95,125 @@ const SESSION_COLUMN_DEFINITIONS = [
   },
 ];
 
+const EVALUATION_SUMMARY_COLUMN_DEFINITIONS = [
+  {
+    id: "evaluation_name",
+    header: "Evaluation Name",
+    sortingField: "evaluation_name",
+    cell: (item) => item.evaluation_name || item.EvaluationId || 'Unnamed Evaluation',
+    isRowHeader: true,
+    width: 300,
+  },
+  {
+    id: "timestamp",
+    header: "Date",
+    sortingField: "Timestamp",
+    cell: (item) => {
+      const timestamp = item.Timestamp || item.timestamp;
+      return timestamp ? 
+        DateTime.fromISO(new Date(timestamp).toISOString()).toLocaleString(DateTime.DATETIME_SHORT) : 
+        'N/A';
+    },
+  },
+  {
+    id: "total_questions",
+    header: "Total Questions",
+    sortingField: "total_questions",
+    cell: (item) => item.total_questions || 0,
+  },
+  {
+    id: "average_similarity",
+    header: "Avg Similarity",
+    sortingField: "average_similarity",
+    cell: (item) => item.average_similarity !== undefined ? 
+      item.average_similarity.toFixed(2) : 'N/A',
+  },
+  {
+    id: "average_relevance",
+    header: "Avg Relevance",
+    sortingField: "average_relevance",
+    cell: (item) => item.average_relevance !== undefined ? 
+      item.average_relevance.toFixed(2) : 'N/A',
+  },
+  {
+    id: "average_correctness",
+    header: "Avg Correctness",
+    sortingField: "average_correctness",
+    cell: (item) => item.average_correctness !== undefined ? 
+      item.average_correctness.toFixed(2) : 'N/A',
+  },
+];
+
+const DETAILED_EVALUATION_COLUMN_DEFINITIONS = [
+  {
+    id: "question_id",
+    header: "Question ID",
+    sortingField: "question_id",
+    cell: (item) => item.QuestionId || item.question_id || 'N/A',
+    isRowHeader: true,
+  },
+  {
+    id: "question",
+    header: "Question",
+    cell: (item) => {
+      const question = item.Question || item.question || 'N/A';
+      return (
+        <TextContent>
+          <div style={{ maxWidth: '400px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {question}
+          </div>
+        </TextContent>
+      );
+    },
+    width: 400,
+  },
+  {
+    id: "similarity_score",
+    header: "Similarity",
+    sortingField: "similarity_score",
+    cell: (item) => {
+      const score = item.similarity ?? item.SimilarityScore ?? item.similarity_score;
+      // Show N/A only if not a number, negative, or greater than 1
+      if (typeof score !== 'number' || score < 0 || score > 1) {
+        return 'N/A';
+      }
+      return (score * 100).toFixed(2) + '%';
+    },
+  },
+  {
+    id: "relevance_score",
+    header: "Relevance",
+    sortingField: "relevance_score",
+    cell: (item) => {
+      const score = item.relevance ?? item.RelevanceScore ?? item.relevance_score;
+      // Show N/A only if not a number, negative, or greater than 1
+      if (typeof score !== 'number' || score < 0 || score > 1) {
+        return 'N/A';
+      }
+      return (score * 100).toFixed(2) + '%';
+    },
+  },
+  {
+    id: "correctness_score",
+    header: "Correctness",
+    sortingField: "correctness_score",
+    cell: (item) => {
+      const score = item.correctness ?? item.CorrectnessScore ?? item.correctness_score;
+      // Show N/A only if not a number, negative, or greater than 1
+      if (typeof score !== 'number' || score < 0 || score > 1) {
+        return 'N/A';
+      }
+      return (score * 100).toFixed(2) + '%';
+    },
+  },
+];
+
 /** This is exposed as a function because the code that this is based off of
  * originally supported many more distinct file types.
+ * @param documentType - The type of document to get column definitions for
+ * @param onClickCallback - Optional callback function for clickable cells (used by evaluation types)
  */
-export function getColumnDefinition(documentType: AdminDataType) {
+export function getColumnDefinition(documentType: AdminDataType, onClickCallback?: (item: any) => void) {
   switch (documentType) {
     case "file":
       return FILES_COLUMN_DEFINITIONS;   
@@ -106,6 +221,26 @@ export function getColumnDefinition(documentType: AdminDataType) {
       return FEEDBACK_COLUMN_DEFINITIONS;
     case "session":
       return SESSION_COLUMN_DEFINITIONS;
+    case "evaluationSummary":
+      // Map the callback into the cell renderer for clickable evaluation names
+      return EVALUATION_SUMMARY_COLUMN_DEFINITIONS.map(col => {
+        if (col.id === "evaluation_name" && onClickCallback) {
+          return {
+            ...col,
+            cell: (item) => {
+              const name = item.evaluation_name || item.EvaluationId || 'Unnamed Evaluation';
+              return (
+                <Link onFollow={() => onClickCallback(item)} variant="primary">
+                  {name}
+                </Link>
+              );
+            }
+          };
+        }
+        return col;
+      });
+    case "detailedEvaluation":
+      return DETAILED_EVALUATION_COLUMN_DEFINITIONS;
     default:
       return [];
   }

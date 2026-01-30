@@ -78,13 +78,13 @@ We use s3 buckets to store prompt data, sources, feedback and even the entire th
 
 All of our backend functionality is on API Gateway. Websockets ensure a persistent and smooth connection between the client and the LLM whilst Rest APIs handle all the other requests. Both work together to link up different managed services in AWS.
 
-- **Amazon Kendra**: For RAG (Retrieval-Augmented Generation) file ingestion and prompt enrichment.
+- **Amazon Bedrock Knowledge Base**: For RAG (Retrieval-Augmented Generation) file ingestion and prompt enrichment.
 
-We use Kendra for indexing and searching specialized documents. Kendra can handle multiple scheduled web scraping jobs and can source data from anywhere in and outside of AWS. Kendra automatically handles chunking and embedding these documents into vectors for semantic based retreival, a big step up from traditional keyword search. 
+We use Bedrock Knowledge Base with OpenSearch for indexing and searching specialized documents. Knowledge Base can handle document ingestion from S3 and automatically handles chunking and embedding these documents into vectors for semantic based retrieval, a big step up from traditional keyword search. 
 
 - **Amazon Bedrock**: Provides core Generative AI functionality with ALMS (Advanced Language Models and Services).
 
-We mainly use the powerful Comprehend models to maximize response quality and efficiency.
+We mainly use the powerful Claude models to maximize response quality and efficiency.
 
 - **Amazon Cognito**: For OIDC integration with external SSO providers.
 

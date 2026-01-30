@@ -82,10 +82,10 @@ export class KnowledgeManagementClient {
     return await response.json()
   }
 
-  // Runs a sync job on Kendra (hardcoded datasource as well as index on the backend)
-  async syncKendra() : Promise<string> {
+  // Runs a sync job on Knowledge Base (hardcoded datasource as well as KB on the backend)
+  async syncKnowledgeBase() : Promise<string> {
     const auth = await Utils.authenticate();
-    const response = await fetch(this.API + '/kendra-sync/sync-kendra', {headers: {
+    const response = await fetch(this.API + '/kb-sync/sync-kb', {headers: {
       'Content-Type': 'application/json',
       'Authorization' : auth
     }})
@@ -95,10 +95,10 @@ export class KnowledgeManagementClient {
     return await response.json()
   }
 
-  // Checks if Kendra is currently syncing (used to disable the sync button)
-  async kendraIsSyncing() : Promise<string> {
+  // Checks if Knowledge Base is currently syncing (used to disable the sync button)
+  async knowledgeBaseIsSyncing() : Promise<string> {
     const auth = await Utils.authenticate();
-    const response = await fetch(this.API + '/kendra-sync/still-syncing', {headers: {
+    const response = await fetch(this.API + '/kb-sync/still-syncing', {headers: {
       'Content-Type': 'application/json',
       'Authorization' : auth
     }})
@@ -108,10 +108,10 @@ export class KnowledgeManagementClient {
     return await response.json()
   }
 
-  // Checks the last time Kendra was synced
-  async lastKendraSync() : Promise<string> {
+  // Checks the last time Knowledge Base was synced
+  async lastKnowledgeBaseSync() : Promise<string> {
     const auth = await Utils.authenticate();
-    const response = await fetch(this.API + '/kendra-sync/get-last-sync', {headers: {
+    const response = await fetch(this.API + '/kb-sync/get-last-sync', {headers: {
       'Content-Type': 'application/json',
       'Authorization' : auth
     }})

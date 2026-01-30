@@ -201,7 +201,7 @@ export default function DocumentsTab(props: DocumentsTabProps) {
 
     const getStatus = async () => {
       try {
-        const result = await apiClient.knowledgeManagement.kendraIsSyncing();
+        const result = await apiClient.knowledgeManagement.knowledgeBaseIsSyncing();
         console.log(result);
         /** If the status is anything other than DONE SYNCING, then just
          * keep the button disabled as if a sync is still running
@@ -220,14 +220,14 @@ export default function DocumentsTab(props: DocumentsTabProps) {
   }, []);
 
   /** Function to run a sync */
-  const syncKendra = async () => {
+  const syncKnowledgeBase = async () => {
     if (syncing) {
       // setSyncing(false)
       return;
     }
     setSyncing(true);
     try {
-      const state = await apiClient.knowledgeManagement.syncKendra();
+      const state = await apiClient.knowledgeManagement.syncKnowledgeBase();
       console.log(state);
       if (state != "STARTED SYNCING") {
         addNotification("error", "Error running sync, please try again later.")
@@ -300,7 +300,7 @@ export default function DocumentsTab(props: DocumentsTabProps) {
                   variant="primary"
                   disabled={syncing}
                   onClick={() => {
-                    syncKendra();
+                    syncKnowledgeBase();
                   }}
                 // data-testid="submit"
                 >

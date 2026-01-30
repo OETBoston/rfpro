@@ -10,3 +10,10 @@ node_modules
 cdk.out
 .env
 lib/user-interface/.DS_Store
+/lib/chatbot-api
+
+# Test cases (may contain sensitive data)
+test-cases/
+!test-cases/README.md
+!test-cases/sample-test-cases.json
+!test-cases/sample-test-cases.csv

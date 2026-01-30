@@ -30,8 +30,8 @@ Encapsulates the chatbot's backend logic, integrating various AWS services for s
    - Lambda functions handle API operations like processing feedback, interacting with DynamoDB, and generating presigned URLs for S3.
 3. **Gateway (`gateway/`)**:
    - Configures API Gateway for routing HTTP and WebSocket requests to backend services.
-4. **Kendra (`kendra/`)**:
-   - Integrates with Amazon Kendra to provide intelligent search capabilities.
+4. **Knowledge Base (`knowledge-base/`)**:
+   - Integrates with Amazon Bedrock Knowledge Base and OpenSearch to provide intelligent semantic search capabilities.
 5. **Tables (`tables/`)**:
    - DynamoDB table definitions store chatbot session data, user feedback, and related metadata.
 6. **index.*:** Entry points for the chatbot API.

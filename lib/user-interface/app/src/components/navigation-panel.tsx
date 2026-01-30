@@ -110,7 +110,9 @@ export default function NavigationPanel() {
         items: [
           { type: "link", text: "Documents", href: "/admin/data" },
           { type: "link", text: "Message Feedback", href: "/admin/user-feedback" },
-          { type: "link", text: "All Sessions", href: "/admin/all-sessions" }
+          { type: "link", text: "All Sessions", href: "/admin/all-sessions" },
+          { type: "link", text: "Metrics", href: "/admin/metrics" },
+          { type: "link", text: "LLM Evaluation", href: "/admin/llm-evaluation" }
         ],
       },)
     }

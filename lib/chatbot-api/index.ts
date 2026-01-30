@@ -6,17 +6,16 @@ import { WebsocketBackendAPI } from "./gateway/websocket-api"
 import { RestBackendAPI } from "./gateway/rest-api"
 import { LambdaFunctionStack } from "./functions/functions"
 import { TableStack } from "./tables/tables"
-import { KendraIndexStack } from "./kendra/kendra"
 import { S3BucketStack } from "./buckets/buckets"
-
 import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { WebSocketLambdaAuthorizer, HttpJwtAuthorizer  } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { aws_apigatewayv2 as apigwv2 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { readFile } from 'fs/promises';
-import { CloudFrontWebDistribution, Distribution } from "aws-cdk-lib/aws-cloudfront";
-import { Role } from "aws-cdk-lib/aws-iam";
+import { CloudFrontWebDistribution } from "aws-cdk-lib/aws-cloudfront";
+import { OpenSearchStack } from "./opensearch/opensearch"
+import { KnowledgeBaseStack } from "./knowledge-base/knowledge-base"
 
 export interface ChatBotApiProps {
   readonly cloudfrontDistribution: CloudFrontWebDistribution;
@@ -33,7 +32,10 @@ export class ChatBotApi extends Construct {
 
     const tables = new TableStack(this, "TableStack");
     const buckets = new S3BucketStack(this, "BucketStack");
-    const kendra = new KendraIndexStack(this, "KendraStack", { s3Bucket: buckets.kendraBucket });
+
+    const openSearch = new OpenSearchStack(this,"OpenSearchStack",{})
+    const knowledgeBase = new KnowledgeBaseStack(this,"KnowledgeBaseStack",{ openSearch : openSearch,
+      s3bucket : buckets.knowledgeBucket})
 
     const websocketBackend = new WebsocketBackendAPI(this, "WebsocketBackend", {})
 
@@ -43,11 +45,15 @@ export class ChatBotApi extends Construct {
         sessionsTable: tables.sessionsTable,
         messagesTable: tables.messagesTable,
         reviewsTable: tables.reviewsTable,
-        kendraIndex: kendra.kendraIndex,
-        kendraSource: kendra.kendraSource,
         downloadBucket: buckets.downloadBucket,
-        knowledgeBucket: buckets.kendraBucket,
+        knowledgeBucket: buckets.knowledgeBucket,
         driveSyncBucket: buckets.driveSyncBucket,
+        knowledgeBase: knowledgeBase.knowledgeBase,
+        knowledgeBaseSource : knowledgeBase.dataSource,
+        evalSummariesTable : tables.evalSummaryTable,
+        evalResutlsTable : tables.evalResultsTable,
+        evalTestCasesBucket : buckets.evalTestCasesBucket,
+        evalResultsBucket : buckets.evalResultsBucket,
       }
     )
 
@@ -130,27 +136,78 @@ export class ChatBotApi extends Construct {
       authorizer: props.httpAuthorizer,
     })
 
-    const kendraSyncProgressAPIIntegration = new HttpLambdaIntegration('KendraSyncAPIIntegration', lambdaFunctions.syncKendraFunction);
+    const kbSyncProgressAPIIntegration = new HttpLambdaIntegration('KBSyncAPIIntegration', lambdaFunctions.syncKBFunction);
     restBackend.restAPI.addRoutes({
-      path: "/kendra-sync/still-syncing",
+      path: "/kb-sync/still-syncing",
       methods: [apigwv2.HttpMethod.GET],
-      integration: kendraSyncProgressAPIIntegration,
+      integration: kbSyncProgressAPIIntegration,
       authorizer: props.httpAuthorizer,
     })
 
-    const kendraSyncAPIIntegration = new HttpLambdaIntegration('KendraSyncAPIIntegration', lambdaFunctions.syncKendraFunction);
+    const kbSyncAPIIntegration = new HttpLambdaIntegration('KBSyncAPIIntegration', lambdaFunctions.syncKBFunction);
     restBackend.restAPI.addRoutes({
-      path: "/kendra-sync/sync-kendra",
+      path: "/kb-sync/sync-kb",
       methods: [apigwv2.HttpMethod.GET],
-      integration: kendraSyncAPIIntegration,
+      integration: kbSyncAPIIntegration,
       authorizer: props.httpAuthorizer,
     })
     
-    const kendraLastSyncAPIIntegration = new HttpLambdaIntegration('KendraLastSyncAPIIntegration', lambdaFunctions.syncKendraFunction);
+    const kbLastSyncAPIIntegration = new HttpLambdaIntegration('KBLastSyncAPIIntegration', lambdaFunctions.syncKBFunction);
     restBackend.restAPI.addRoutes({
-      path: "/kendra-sync/get-last-sync",
+      path: "/kb-sync/get-last-sync",
       methods: [apigwv2.HttpMethod.GET],
-      integration: kendraLastSyncAPIIntegration,
+      integration: kbLastSyncAPIIntegration,
+      authorizer: props.httpAuthorizer,
+    })
+    
+    const evalResultsHandlerIntegration = new HttpLambdaIntegration(
+      'EvalResultsHandlerIntegration',
+      lambdaFunctions.handleEvalResultsFunction
+    );
+
+    restBackend.restAPI.addRoutes({
+      path: "/eval-results-handler",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: evalResultsHandlerIntegration,
+      authorizer: props.httpAuthorizer,
+    });
+
+    const evalRunHandlerIntegration = new HttpLambdaIntegration(
+      'EvalRunHandlerIntegration',
+      lambdaFunctions.stepFunctionsStack.startLlmEvalStateMachineFunction
+    );
+    restBackend.restAPI.addRoutes({
+      path: "/eval-run-handler",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: evalRunHandlerIntegration,
+      authorizer: props.httpAuthorizer,
+    }); 
+
+    const metricsHandlerIntegration = new HttpLambdaIntegration(
+      'MetricsHandlerIntegration',
+      lambdaFunctions.metricsHandlerFunction
+    );
+
+    restBackend.restAPI.addRoutes({
+      path: "/metrics",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: metricsHandlerIntegration,
+      authorizer: props.httpAuthorizer,
+    });
+
+    const s3UploadTestCasesAPIIntegration = new HttpLambdaIntegration('S3UploadTestCasesAPIIntegration', lambdaFunctions.uploadS3TestCasesFunction);    
+    restBackend.restAPI.addRoutes({
+      path: "/signed-url-test-cases",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: s3UploadTestCasesAPIIntegration,
+      authorizer: props.httpAuthorizer,
+    })
+
+    const s3GetTestCasesAPIIntegration = new HttpLambdaIntegration('S3GetTestCasesAPIIntegration', lambdaFunctions.getS3TestCasesFunction);
+    restBackend.restAPI.addRoutes({
+      path: "/s3-test-cases-bucket-data",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: s3GetTestCasesAPIIntegration,
       authorizer: props.httpAuthorizer,
     })
 
