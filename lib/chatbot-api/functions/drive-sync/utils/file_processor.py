@@ -29,22 +29,27 @@ class FileProcessor:
     def generate_flat_key(file_id: str, name: str) -> str:
         """Generate a unique, flat S3 key for a file.
         
+        Uses triple underscore delimiter for unambiguous parsing:
+        filename___GOOGLE_DRIVE_ID.pdf
+        
         Args:
             file_id: Google Drive file ID
             name: Original file name
             
         Returns:
-            Flattened S3 key
+            Flattened S3 key with format: {original_name}___{drive_id}.pdf
         """
         # Extract base name without extension
         base_name = re.sub(r'\.[^.]+$', '', name)
         
-        # Clean name - remove special chars, spaces to dashes
-        clean_name = re.sub(r'[^a-zA-Z0-9-]', '-', base_name)
+        # Clean name - preserve underscores, dashes, and alphanumeric
+        # Only replace truly problematic characters (spaces, special chars)
+        clean_name = re.sub(r'[^a-zA-Z0-9_-]', '-', base_name)
         clean_name = re.sub(r'-+', '-', clean_name).strip('-')
         
-        # Combine with file ID and .pdf extension
-        return f"{clean_name}-{file_id}.pdf"
+        # Combine with file ID using triple underscore delimiter and .pdf extension
+        # Triple underscore ensures 100% accurate parsing on frontend
+        return f"{clean_name}___{file_id}.pdf"
 
     @staticmethod
     def calculate_hash(data: bytes) -> str:

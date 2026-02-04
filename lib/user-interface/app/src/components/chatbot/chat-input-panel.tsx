@@ -388,6 +388,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         // Dispatch event for message completion
         window.dispatchEvent(new Event('messageReceived'));
         console.log('Disconnected from the WebSocket server');
+
       });
 
     } catch (error) {      

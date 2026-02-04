@@ -93,6 +93,28 @@ export default function ChatMessage(props: ChatMessageProps) {
   const showSources = props.message.metadata?.Sources && (props.message.metadata.Sources as any[]).length > 0;
   const defaultSource = [{ id: "id", disabled: false, text: "Find these in Finance Academy!", href: "https://sites.google.com/boston.gov/finance-academy/document-library?authuser=0", external: true, externalIconAriaLabel: "(opens in new tab)" }];
   
+  // Extract Google Drive ID from filename and construct Google Drive URL
+  // Expected format: filename___GOOGLE_DRIVE_ID.extension
+  // The triple underscore delimiter ensures 100% accurate parsing
+  const extractGoogleDriveInfo = (filename: string): { url: string | null; displayName: string } => {
+    // URL decode the filename first to handle special characters
+    const decodedFilename = decodeURIComponent(filename);
+    
+    // Match pattern: filename___GOOGLE_DRIVE_ID.extension
+    // Using triple underscore as an unambiguous delimiter
+    const match = decodedFilename.match(/^(.+?)___([A-Za-z0-9_-]{25,44})(\.[^.]+)$/);
+    
+    if (match) {
+      const displayName = match[1] + match[3]; // Filename without the ID part
+      const driveId = match[2];
+      const url = `https://drive.google.com/file/d/${driveId}/view`;
+      return { url, displayName };
+    }
+    
+    // If no match, return the decoded filename as display name with no URL
+    return { url: null, displayName: decodedFilename };
+  };
+  
   return (
     <div>
       <Modal
@@ -198,10 +220,45 @@ export default function ChatMessage(props: ChatMessageProps) {
                 <ButtonDropdown className="sources-button"
                   items={
                     (props.message.metadata?.Sources && (props.message.metadata.Sources as any[]).length > 0) ?
-                      (props.message.metadata.Sources as any[]).map((item) => {
-                        return { id: "id", disabled: true, text: item.title}
+                      (props.message.metadata.Sources as any[]).map((item, index) => {
+                        const { url: googleDriveUrl, displayName } = extractGoogleDriveInfo(item.title);
+                        // Debug logging
+                        console.log('Source item:', {
+                          original: item.title,
+                          displayName,
+                          url: googleDriveUrl
+                        });
+                        return { 
+                          id: `source-${index}`, 
+                          disabled: false, 
+                          text: displayName,
+                          href: googleDriveUrl || undefined,
+                          external: !!googleDriveUrl,
+                          externalIconAriaLabel: googleDriveUrl ? "(opens Google Drive in new tab)" : undefined
+                        }
                       }).concat(defaultSource) : defaultSource
                   }
+                  onItemClick={(event) => {
+                    // Handle clicks for items with URLs
+                    const item = event.detail;
+                    console.log('ButtonDropdown item clicked:', item);
+                    
+                    // Find the matching source item
+                    if (item.id && item.id.startsWith('source-')) {
+                      const index = parseInt(item.id.replace('source-', ''));
+                      const sources = props.message.metadata?.Sources as any[];
+                      if (sources && sources[index]) {
+                        const { url } = extractGoogleDriveInfo(sources[index].title);
+                        if (url) {
+                          console.log('Opening URL from click:', url);
+                          window.open(url, '_blank', 'noopener,noreferrer');
+                        }
+                      }
+                    } else if (item.id === 'id') {
+                      // Default Finance Academy link
+                      window.open('https://sites.google.com/boston.gov/finance-academy/document-library?authuser=0', '_blank', 'noopener,noreferrer');
+                    }
+                  }}
                 >Sources</ButtonDropdown>
               </div>              
               </SpaceBetween>

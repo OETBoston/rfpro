@@ -4,11 +4,45 @@ import { Utils } from "../../common/utils";
 import { Link } from "@cloudscape-design/components";
 import TextContent from "@cloudscape-design/components/text-content";
 
+// Extract Google Drive ID from filename and construct Google Drive URL
+// Expected format: filename___GOOGLE_DRIVE_ID.extension
+// The triple underscore delimiter ensures 100% accurate parsing
+const extractGoogleDriveInfo = (filename: string): { url: string | null; displayName: string } => {
+  // URL decode the filename first to handle special characters
+  const decodedFilename = decodeURIComponent(filename);
+  
+  // Match pattern: filename___GOOGLE_DRIVE_ID.extension
+  // Using triple underscore as an unambiguous delimiter
+  const match = decodedFilename.match(/^(.+?)___([A-Za-z0-9_-]{25,44})(\.[^.]+)$/);
+  
+  if (match) {
+    const displayName = match[1] + match[3]; // Filename without the ID part
+    const driveId = match[2];
+    const url = `https://drive.google.com/file/d/${driveId}/view`;
+    return { url, displayName };
+  }
+  
+  // If no match, return the decoded filename as display name with no URL
+  return { url: null, displayName: decodedFilename };
+};
+
 const FILES_COLUMN_DEFINITIONS = [
   {
     id: "name",
     header: "Name",
-    cell: (item) => item.Key!,
+    cell: (item) => {
+      const filename = item.Key!;
+      const { url: googleDriveUrl, displayName } = extractGoogleDriveInfo(filename);
+      
+      if (googleDriveUrl) {
+        return (
+          <Link href={googleDriveUrl} external={true} externalIconAriaLabel="Opens in Google Drive">
+            {displayName}
+          </Link>
+        );
+      }
+      return displayName;
+    },
     isRowHeader: true,
   },
   {

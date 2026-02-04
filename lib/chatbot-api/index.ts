@@ -195,6 +195,30 @@ export class ChatBotApi extends Construct {
       authorizer: props.httpAuthorizer,
     });
 
+    // KPI Handler routes for chatbot interaction tracking
+    const kpiAPIIntegration = new HttpLambdaIntegration('KPIAPIIntegration', lambdaFunctions.kpiHandlerFunction);
+    restBackend.restAPI.addRoutes({
+      path: "/chatbot-use",
+      methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST, apigwv2.HttpMethod.DELETE],
+      integration: kpiAPIIntegration,
+      authorizer: props.httpAuthorizer,
+    });
+
+    restBackend.restAPI.addRoutes({
+      path: "/chatbot-use/download",
+      methods: [apigwv2.HttpMethod.POST],
+      integration: kpiAPIIntegration,
+      authorizer: props.httpAuthorizer,
+    });
+
+    // Daily users route (computed on-demand from sessions)
+    restBackend.restAPI.addRoutes({
+      path: "/daily-logins",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: kpiAPIIntegration,
+      authorizer: props.httpAuthorizer,
+    });
+
     const s3UploadTestCasesAPIIntegration = new HttpLambdaIntegration('S3UploadTestCasesAPIIntegration', lambdaFunctions.uploadS3TestCasesFunction);    
     restBackend.restAPI.addRoutes({
       path: "/signed-url-test-cases",

@@ -45,6 +45,7 @@ export class LambdaFunctionStack extends cdk.Stack {
   public readonly uploadS3TestCasesFunction : lambda.Function;
   public readonly handleEvalResultsFunction : lambda.Function;
   public readonly metricsHandlerFunction : lambda.Function;
+  public readonly kpiHandlerFunction : lambda.Function;
 
   constructor(scope: Construct, id: string, props: LambdaFunctionStackProps) {
     super(scope, id);    
@@ -475,6 +476,49 @@ export class LambdaFunctionStack extends cdk.Stack {
     }));
 
     this.metricsHandlerFunction = metricsHandlerFunction;
+
+    // KPI Handler Function for chatbot interaction tracking
+    // Queries from sessions/messages tables - daily users computed on-demand
+    const kpiHandlerFunction = new lambda.Function(scope, 'KPIHandlerFunction', {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset(path.join(__dirname, 'kpi-handler')),
+      handler: 'lambda_function.lambda_handler',
+      environment: {
+        "SESSIONS_TABLE": props.sessionsTable.tableName,
+        "MESSAGES_TABLE": props.messagesTable.tableName,
+        "INTERACTION_S3_DOWNLOAD": props.downloadBucket.bucketName
+      },
+      timeout: cdk.Duration.seconds(60)
+    });
+
+    kpiHandlerFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'dynamodb:GetItem',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+        'dynamodb:Query',
+        'dynamodb:Scan'
+      ],
+      resources: [
+        props.sessionsTable.tableArn,
+        props.sessionsTable.tableArn + "/index/*",
+        props.messagesTable.tableArn,
+        props.messagesTable.tableArn + "/index/*"
+      ]
+    }));
+
+    kpiHandlerFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        's3:PutObject',
+        's3:GetObject'
+      ],
+      resources: [props.downloadBucket.bucketArn, props.downloadBucket.bucketArn + "/*"]
+    }));
+
+    this.kpiHandlerFunction = kpiHandlerFunction;
 
     this.stepFunctionsStack = new StepFunctionsStack(scope, 'StepFunctionsStack', {
       knowledgeBase: props.knowledgeBase,

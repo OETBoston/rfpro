@@ -56,7 +56,7 @@ def add_new_session_with_first_message(session_id, user_id, title, first_chat_en
                 'bot_response': first_chat_entry['bot_response'],
                 'sources': first_chat_entry.get('sources', []),
                 'created_at': datetime.now().isoformat(),
-                'response_time': Decimal("0")
+                'response_time': Decimal(str(first_chat_entry.get('response_time', 0)))
             }
         )
 
@@ -90,7 +90,7 @@ def add_message_to_existing_session(session_id, new_chat_entry):
                 'bot_response': new_chat_entry['bot_response'],
                 'sources': new_chat_entry.get('sources', []),
                 'created_at': datetime.now().isoformat(),
-                'response_time': Decimal("0")
+                'response_time': Decimal(str(new_chat_entry.get('response_time', 0)))
             }
         )
 

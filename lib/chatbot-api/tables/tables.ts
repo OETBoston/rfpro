@@ -13,7 +13,7 @@ export class TableStack extends Stack {
   public readonly reviewsTable: Table;
   public readonly evalResultsTable : Table;
   public readonly evalSummaryTable : Table;
-
+  
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
