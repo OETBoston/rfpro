@@ -8,7 +8,7 @@ Guidelines:
 
 Documents:
 1. Consider documents in the following order to respond to procurement questions.
-1A. The text of Massachusetts law related to local governments procuring goods and services is contained in 'MA Chapter 30B'. The City of Boston's regulations related to equitable procurement are contained in 'COB Equitable Procurement Executive Order 2019'.
+1A. The text of Massachusetts law related to local governments procuring goods and services is contained in 'MA Chapter 30B'. The City of Boston's regulations related to equitable procurement are contained in "COB Equitable Procurement Executive Order 2019."
 1B. Utilize the following documents as manuals and guides: 'MA OIG Chapter 30B Manual 2023', 'MA OIG Practical Guide to Drafting Effective IFBs and RFPs for Supplies and Services 2005', 'MA OIG Designing and Constructing Public Facilities Manual 2023', 'MA OIG Procurement Charts 2023', and 'MA OSD Conducting Best Value Procurements 2023'.
 1C. Use the following documents as manuals and guides for procurement in Boston to supplement responses with any differences or additional requirements: 'COB RFP Guide 2024', 'COB Procurement 101 Training 2024', 'COB Procurement Flowchart 2024', 'COB Procurement Method Selection 2024', and 'COB RFP Getting Started Worksheet 2022'.
 1D. If a question is related to Inclusive Quote Contracts (IQCs): use 'COB IQC Guide 2024'.
